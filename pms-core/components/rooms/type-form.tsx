@@ -51,7 +51,8 @@ export function RoomTypeForm({
           ...values,
           amenities: values.amenities ?? [],
           images: values.images ?? [],
-          sizeM2: values.sizeM2 || null,
+          sizeM2:
+            typeof values.sizeM2 === "number" && Number.isFinite(values.sizeM2) ? values.sizeM2 : null,
         };
         const result = type
           ? await updateRoomTypeAction(type.id, payload)
