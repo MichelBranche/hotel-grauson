@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRef } from "react";
 
 import { SeasonalImage } from "@/components/ui/SeasonalImage";
-import { EASE, gsap, reducedMotion, useGSAP } from "@/lib/motion";
+import { EASE, gsap, reducedMotion, revealHeroTitle, useGSAP } from "@/lib/motion";
 import type { RoomMedia } from "@/lib/rooms";
 
 type PageHeroProps = {
@@ -33,8 +33,9 @@ export function PageHero({ eyebrow, title, lede, note, media, detail }: PageHero
         duration: 1.5,
       })
         .to(q("[data-hero-media]"), { scale: 1, duration: desktop ? 2.2 : 0 }, 0)
-        .to(q("[data-hero-el='eyebrow']"), { opacity: 1, y: 0, duration: 0.95 }, 0.5)
-        .to(q("[data-hero-line] > span"), { y: 0, duration: 1.25, stagger: 0.12 }, 0.62);
+        .to(q("[data-hero-el='eyebrow']"), { opacity: 1, y: 0, duration: 0.95 }, 0.5);
+
+      revealHeroTitle(tl, q("[data-hero-line] > span"), 0.55);
 
       const lede = q("[data-hero-el='lede']");
       const note = q("[data-hero-el='note']");

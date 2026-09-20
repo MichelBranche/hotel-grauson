@@ -269,9 +269,13 @@ img {
   transform: translate3d(0, 16px, 0);
 }
 
+.has-motion [data-hero-line] {
+  overflow: hidden;
+}
+
 .has-motion [data-hero-line] > span {
   display: block;
-  transform: translate3d(0, 105%, 0);
+  opacity: 0;
 }
 
 .has-motion [data-hero-frame] {

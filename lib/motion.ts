@@ -13,6 +13,29 @@ if (typeof window !== "undefined") {
 export const EASE = "power3.out";
 export const EASE_SOFT = "power2.out";
 
+/** Title mask: GSAP owns the rise. CSS only hides — a % translate in the
+ *  stylesheet would be read as pixels and fight yPercent. */
+export function revealHeroTitle(
+  timeline: gsap.core.Timeline,
+  lines: gsap.TweenTarget,
+  at = 0.52,
+) {
+  timeline.fromTo(
+    lines,
+    { y: 0, yPercent: 120, opacity: 0 },
+    {
+      y: 0,
+      yPercent: 0,
+      opacity: 1,
+      duration: 1.55,
+      stagger: 0.18,
+      ease: "cubic-bezier(0.16, 1, 0.3, 1)",
+      overwrite: "auto",
+    },
+    at,
+  );
+}
+
 export function reducedMotion() {
   if (typeof window === "undefined") return true;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return true;

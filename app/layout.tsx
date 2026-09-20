@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Caveat, Geist, Instrument_Serif } from "next/font/google";
 import localFont from "next/font/local";
 
+import { Analytics } from "@vercel/analytics/next";
+
 import { JsonLd } from "@/components/seo/JsonLd";
 import { EffectsProvider } from "@/components/providers/EffectsProvider";
 import { SeasonProvider } from "@/components/providers/SeasonProvider";
@@ -122,6 +124,12 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: motionFlag }} />
+        <style
+          dangerouslySetInnerHTML={{
+            __html:
+              ".has-motion [data-hero-line]{overflow:hidden}.has-motion [data-hero-line]>span{display:block;opacity:0}",
+          }}
+        />
       </head>
       <body>
         <SeasonProvider initialSeason={season}>
@@ -131,6 +139,7 @@ export default function RootLayout({
         </SeasonProvider>
         <JsonLd id="hotel-schema" data={hotelJsonLd()} />
         <JsonLd id="website-schema" data={websiteJsonLd()} />
+        <Analytics />
       </body>
     </html>
   );

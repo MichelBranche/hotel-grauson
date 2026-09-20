@@ -158,9 +158,12 @@ export function PageTransition() {
       </div>
       <div
         aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(to_right,rgb(27_36_29_/_0.48)_0%,rgb(27_36_29_/_0.28)_48%,rgb(27_36_29_/_0.18)_100%)]"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(27_36_29_/_0.42)_0%,rgb(27_36_29_/_0.24)_55%,rgb(27_36_29_/_0.16)_100%)]"
       />
-      <div ref={mark} className="shell relative flex h-full flex-col justify-center">
+      <div
+        ref={mark}
+        className="shell relative flex h-full flex-col items-center justify-center text-center"
+      >
         <Wordmark size="lg" />
         <p className="hand mt-5 text-[1.35rem] leading-none text-surface/90 sm:text-[1.55rem]">
           {label}

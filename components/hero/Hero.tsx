@@ -10,7 +10,7 @@ import { useSeason } from "@/components/providers/SeasonProvider";
 import { ButtonLink } from "@/components/ui/Button";
 import { MagneticButton } from "@/components/ui/MagneticButton";
 import { SeasonalImage } from "@/components/ui/SeasonalImage";
-import { EASE, gsap, reducedMotion, useGSAP } from "@/lib/motion";
+import { EASE, gsap, reducedMotion, revealHeroTitle, useGSAP } from "@/lib/motion";
 import { hotel } from "@/lib/content";
 
 export function Hero() {
@@ -33,11 +33,11 @@ export function Hero() {
         clipPath: "inset(0% 0% 0% 0% round 34px)",
         duration: 1.65,
       })
-        .to(q("[data-hero-media]"), { scale: 1, duration: desktop ? 2.4 : 0 }, 0)
-        // `y`, not `yPercent`: GSAP reads the stylesheet's translate3d(0,105%,0)
-        // into its pixel channel, so the percentage channel would never move.
-        .to(q("[data-hero-line] > span"), { y: 0, duration: 1.35, stagger: 0.12 }, 0.6)
-        .to(q("[data-hero-el='lede']"), { opacity: 1, y: 0, duration: 1.1 }, 1.15)
+        .to(q("[data-hero-media]"), { scale: 1, duration: desktop ? 2.4 : 0 }, 0);
+
+      revealHeroTitle(tl, q("[data-hero-line] > span"), 0.52);
+
+      tl.to(q("[data-hero-el='lede']"), { opacity: 1, y: 0, duration: 1.1 }, 1.15)
         .to(q("[data-hero-el='note']"), { opacity: 1, y: 0, duration: 1.4 }, 1.2)
         .to(q("[data-hero-el='cta']"), { opacity: 1, y: 0, duration: 1, stagger: 0.12 }, 1.32)
         .to(
