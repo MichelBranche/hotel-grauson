@@ -1,0 +1,438 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Locanda Grauson — design tokens
+   ========================================================================== */
+
+:root {
+  --paper: #f1eee6;
+  --surface: #f7f5ef;
+  --surface-deep: #e7e1d5;
+  --ink: #252721;
+  --muted: #77766d;
+  --alpine: #263229;
+  --alpine-deep: #1b241d;
+  --alpine-soft: #465044;
+  --stone: #b8b0a1;
+  --wood: #735b43;
+
+  --radius-hero: 34px;
+  --radius-panel: 30px;
+  --radius-card: 26px;
+  --radius-soft: 18px;
+
+  --shadow-soft: 0 1px 2px rgb(37 39 33 / 0.04), 0 12px 30px -18px rgb(37 39 33 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(37 39 33 / 0.05), 0 26px 50px -24px rgb(37 39 33 / 0.26);
+  --hairline: 1px solid rgb(37 39 33 / 0.07);
+
+  /* Accent of every primary call to action. Re-declared per season below, so
+     the buttons follow the photography instead of sitting against it. */
+  --accent: var(--alpine);
+  --accent-hover: #31402f;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* For crossfades between two resting states, where the front-loaded
+     --ease-out would spend half the distance in the first frames. */
+  --ease-skin: cubic-bezier(0.4, 0.06, 0.22, 1);
+  --gutter: clamp(1.15rem, 2.4vw, 2.5rem);
+}
+
+/* Set on <html> by the server and kept in step by the SeasonProvider. */
+[data-season="autunno"] {
+  --accent: #6b3d21;
+  --accent-hover: #7e4b2b;
+}
+
+[data-season="inverno"] {
+  --accent: #2c3b45;
+  --accent-hover: #394b56;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-deep: var(--surface-deep);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-alpine: var(--alpine);
+  --color-alpine-deep: var(--alpine-deep);
+  --color-alpine-soft: var(--alpine-soft);
+  --color-stone: var(--stone);
+  --color-wood: var(--wood);
+
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument), ui-serif, Georgia, serif;
+  --font-display: var(--font-sora), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-hand: var(--font-caveat), ui-serif, cursive;
+
+  --radius-hero: var(--radius-hero);
+  --radius-panel: var(--radius-panel);
+  --radius-card: var(--radius-card);
+  --radius-soft: var(--radius-soft);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+* {
+  min-width: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 70%, var(--stone)) var(--paper);
+}
+
+html::-webkit-scrollbar {
+  width: 11px;
+}
+
+html::-webkit-scrollbar-track {
+  background: var(--paper);
+}
+
+html::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 68%, var(--stone));
+  border: 3px solid var(--paper);
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+html::-webkit-scrollbar-corner {
+  background: var(--paper);
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+/* Lenis drives the scroll position, so native smooth scrolling must stay off. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+::selection {
+  background-color: var(--alpine);
+  color: var(--surface);
+}
+
+:focus-visible {
+  outline: 2px solid var(--alpine);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.on-dark :focus-visible {
+  outline-color: var(--surface);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+/* ==========================================================================
+   Typography helpers
+   ========================================================================== */
+
+.display-xl {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2.9rem, 7.4vw, 6.1rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.display-lg {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2.2rem, 4.6vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+}
+
+.display-md {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.6rem, 2.4vw, 2.1rem);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+}
+
+.display-sm {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.hand {
+  font-family: var(--font-hand);
+  font-weight: 500;
+  line-height: 1.16;
+  letter-spacing: 0.005em;
+}
+
+.lede {
+  font-size: clamp(0.975rem, 1.05vw, 1.0625rem);
+  line-height: 1.62;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+
+.shell {
+  width: 100%;
+  max-width: 1800px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* How far the booking bar holds at the centre of the viewport before it
+   releases. The footer pulls itself up by the same amount, so the extra
+   travel costs no page height and the valley scrolls behind the bar. */
+:root {
+  --bar-travel: 0rem;
+}
+
+@media (min-width: 64rem) {
+  /* Roughly the depth of the forest band, so the bar stays centred for the whole
+     stretch where the valley passes behind it and never reaches far enough down
+     to sit over the footer links. */
+  :root {
+    --bar-travel: min(26vw, 40rem);
+  }
+}
+
+/* ==========================================================================
+   Motion
+   Initial states apply only when `.has-motion` is set by the inline head
+   script. Without JS, or with prefers-reduced-motion, content renders visible.
+   ========================================================================== */
+
+.has-motion [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-y, 26px), 0);
+}
+
+/* Rest state after GSAP finishes. Without this, clearing the inline
+   transform would snap the node back to the offset above. */
+.has-motion [data-reveal][data-in] {
+  opacity: 1;
+  transform: none;
+}
+
+.has-motion [data-hero-el] {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+}
+
+.has-motion [data-hero-line] > span {
+  display: block;
+  transform: translate3d(0, 105%, 0);
+}
+
+.has-motion [data-hero-frame] {
+  clip-path: inset(14% 10% 14% 10% round var(--radius-hero));
+}
+
+.has-motion [data-hero-media] {
+  transform: scale(1.1);
+}
+
+.has-motion [data-image-frame] {
+  clip-path: inset(9% 7% 9% 7% round var(--frame-radius, 26px));
+}
+
+.has-motion [data-image-media] {
+  transform: scale(1.14);
+}
+
+/* The mask box is padded out (and pulled back with negative margins) so tight
+   display leading never clips ascenders or descenders. */
+[data-hero-line] {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.2em 0.26em;
+  margin-block: -0.2em -0.26em;
+}
+
+/* Handwritten notes sit directly on photography, so they carry their own halo. */
+.hand-on-photo {
+  text-shadow:
+    0 1px 2px rgb(16 20 14 / 0.55),
+    0 2px 18px rgb(16 20 14 / 0.65);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}
+
+/* ==========================================================================
+   Components
+   ========================================================================== */
+
+.pill-nav-link {
+  position: relative;
+  padding: 0.5rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--ink) 78%, transparent);
+  transition: color 0.4s var(--ease-out), background-color 0.4s var(--ease-out);
+}
+
+/* Floating glass chips (center nav, language). They live on their own layer
+   so they can dissolve — opacity + a soft blur — after the solid bar has
+   already started to appear, instead of merely tinting into it. */
+.nav-chip {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  background: rgb(247 245 239 / 0.7);
+  box-shadow: 0 10px 34px -24px rgb(20 24 18 / 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.55s var(--ease-skin);
+}
+
+[data-nav="float"] .nav-chip {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+[data-nav="solid"] .nav-chip {
+  opacity: 0;
+  transition-delay: 0.18s;
+}
+
+.pill-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.3rem;
+  height: 1px;
+  background-color: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.pill-nav-link:hover {
+  color: var(--ink);
+}
+
+.pill-nav-link[aria-current="page"] {
+  color: var(--ink);
+}
+
+.pill-nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+.arrow-slide {
+  transition: transform 0.5s var(--ease-out);
+}
+
+.group:hover .arrow-slide,
+.arrow-parent:hover .arrow-slide {
+  transform: translateX(4px);
+}
+
+.card-media {
+  transition: transform 0.9s var(--ease-out);
+  will-change: transform;
+}
+
+.group:hover .card-media {
+  transform: scale(1.045);
+}
+
+/* Date fields: keep the native picker, but show a friendly hint while empty.
+   Scoped to engines that expose the shadow parts we can recolour. */
+.date-field::-webkit-calendar-picker-indicator {
+  margin-left: 0.25rem;
+  cursor: pointer;
+  opacity: 0.32;
+  transition: opacity 0.3s var(--ease-out);
+}
+
+.date-field::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.7;
+}
+
+.date-hint {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: none;
+  opacity: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: opacity 0.25s var(--ease-out);
+}
+
+@supports selector(::-webkit-datetime-edit) {
+  .date-field[data-empty="true"]:not(:focus)::-webkit-datetime-edit {
+    color: transparent;
+  }
+
+  .date-field[data-empty="true"]:not(:focus) + .date-hint {
+    opacity: 1;
+  }
+}

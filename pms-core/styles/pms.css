@@ -1,0 +1,63 @@
+[data-pms] {
+  --pms-bg: #f1eee6;
+  --pms-surface: #f7f5ef;
+  --pms-surface-dark: #e7e1d5;
+  --pms-text: #252721;
+  --pms-muted: #77766d;
+  --pms-alpine: #263229;
+  --pms-green-soft: #465044;
+  --pms-stone: #b8b0a1;
+  --pms-wood: #735b43;
+  --pms-line: rgb(37 39 33 / 0.08);
+  --pms-shadow: 0 1px 2px rgb(37 39 33 / 0.04), 0 16px 36px -24px rgb(37 39 33 / 0.22);
+  --pms-radius: 22px;
+  --pms-radius-sm: 16px;
+  --pms-sidebar: 232px;
+  color: var(--pms-text);
+  background: var(--pms-bg);
+  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100dvh;
+}
+
+body:has([data-pms]) {
+  background: var(--pms-bg, #f1eee6);
+  overflow: hidden;
+}
+
+[data-pms] button,
+[data-pms] input,
+[data-pms] select,
+[data-pms] textarea {
+  font: inherit;
+}
+
+[data-pms] .pms-card {
+  background: var(--pms-surface);
+  border: 1px solid var(--pms-line);
+  border-radius: var(--pms-radius);
+  box-shadow: var(--pms-shadow);
+}
+
+[data-pms] .pms-kpi {
+  background: #fffdf8;
+  border: 1px solid var(--pms-line);
+  border-radius: 20px;
+  box-shadow: var(--pms-shadow);
+}
+
+[data-pms] .pms-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-pms] .pms-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--pms-alpine) 55%, var(--pms-stone));
+  border-radius: 999px;
+  border: 2px solid var(--pms-surface);
+}
+
+@media (max-width: 767px) {
+  [data-pms] {
+    --pms-sidebar: 0px;
+  }
+}

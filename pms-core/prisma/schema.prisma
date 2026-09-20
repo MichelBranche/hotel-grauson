@@ -1,0 +1,457 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  RECEPTIONIST
+  HOUSEKEEPING
+  READ_ONLY
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  DIRTY
+  CLEANING
+  INSPECTED
+  OUT_OF_ORDER
+  OUT_OF_SERVICE
+}
+
+enum ReservationStatus {
+  INQUIRY
+  OPTION
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  ONLINE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum HousekeepingPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ChannelType {
+  DIRECT
+  BOOKING_COM
+  EXPEDIA
+  AIRBNB
+  OTHER
+}
+
+model Organization {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  properties Property[]
+  users      User[]
+}
+
+model Property {
+  id               String   @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name             String
+  slug             String   @unique
+  logo             String?
+  address          String?
+  city             String
+  postalCode       String?
+  country          String
+  timezone         String
+  currency         String
+  language         String
+  settings         String   @default("{}")
+  reservationSeq   Int      @default(1000)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users            User[]
+  rooms            Room[]
+  roomTypes        RoomType[]
+  guests           Guest[]
+  reservations     Reservation[]
+  ratePlans        RatePlan[]
+  extras           Extra[]
+  inventory        Inventory[]
+  housekeepingTasks HousekeepingTask[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  channelConnections ChannelConnection[]
+}
+
+model User {
+  id             String    @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyId     String?
+  property       Property? @relation(fields: [propertyId], references: [id])
+  email          String    @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           UserRole
+  active         Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  auditLogs      AuditLog[]
+  assignedTasks  HousekeepingTask[]
+}
+
+model RoomType {
+  id            String   @id @default(cuid())
+  propertyId    String
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String
+  description   String   @default("")
+  capacity      Int
+  amenities     String   @default("[]")
+  images        String   @default("[]")
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rooms         Room[]
+  reservations  Reservation[]
+  rates         Rate[]
+  ratePrices    RatePlanPrice[]
+  inventory     Inventory[]
+  channelMaps   ChannelRoomMapping[]
+
+  @@unique([propertyId, slug])
+}
+
+model Room {
+  id           String     @id @default(cuid())
+  propertyId   String
+  property     Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeId   String
+  roomType     RoomType   @relation(fields: [roomTypeId], references: [id])
+  number       String
+  name         String?
+  floor        Int
+  capacity     Int
+  beds         String     @default("")
+  amenities    String     @default("[]")
+  status       RoomStatus @default(AVAILABLE)
+  notes        String     @default("")
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  reservations Reservation[]
+  housekeepingTasks HousekeepingTask[]
+
+  @@unique([propertyId, number])
+  @@index([propertyId, status])
+}
+
+model Guest {
+  id             String   @id @default(cuid())
+  propertyId     String
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  country        String?
+  documentType   String?
+  documentNumber String?
+  dateOfBirth    DateTime?
+  notes          String   @default("")
+  preferences    String   @default("[]")
+  vip            Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  reservations   Reservation[]
+  stays          ReservationGuest[]
+
+  @@index([propertyId, lastName])
+  @@index([propertyId, email])
+}
+
+model RatePlan {
+  id                  String   @id @default(cuid())
+  propertyId          String
+  property            Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  code                String
+  name                String
+  description         String   @default("")
+  cancellationPolicy  String   @default("")
+  depositPercent      Float    @default(0)
+  minimumStay         Int      @default(1)
+  maximumStay         Int?
+  closedToArrival     Boolean  @default(false)
+  closedToDeparture   Boolean  @default(false)
+  isRefundable        Boolean  @default(true)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  prices              RatePlanPrice[]
+  rates               Rate[]
+  reservations        Reservation[]
+  channelMaps         ChannelRateMapping[]
+
+  @@unique([propertyId, code])
+}
+
+model RatePlanPrice {
+  id         String   @id @default(cuid())
+  ratePlanId String
+  ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  basePrice  Float
+
+  @@unique([ratePlanId, roomTypeId])
+}
+
+model Rate {
+  id         String   @id @default(cuid())
+  ratePlanId String
+  ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  date       DateTime
+  price      Float
+  closed     Boolean  @default(false)
+
+  @@unique([ratePlanId, roomTypeId, date])
+  @@index([roomTypeId, date])
+}
+
+model Extra {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @default("")
+  price       Float
+  perNight    Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  reservations ReservationExtra[]
+}
+
+model Inventory {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeId  String
+  roomType    RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  date        DateTime
+  closed      Boolean  @default(false)
+  minStay     Int?
+  maxStay     Int?
+
+  @@unique([propertyId, roomTypeId, date])
+}
+
+model Reservation {
+  id           String            @id @default(cuid())
+  propertyId   String
+  property     Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  code         String            @unique
+  roomId       String
+  room         Room              @relation(fields: [roomId], references: [id])
+  roomTypeId   String
+  roomType     RoomType          @relation(fields: [roomTypeId], references: [id])
+  ratePlanId   String?
+  ratePlan     RatePlan?         @relation(fields: [ratePlanId], references: [id])
+  guestId      String
+  guest        Guest             @relation(fields: [guestId], references: [id])
+  status       ReservationStatus @default(CONFIRMED)
+  checkIn      DateTime
+  checkOut     DateTime
+  adults       Int
+  children     Int               @default(0)
+  nights       Int
+  roomRate     Float
+  extrasTotal  Float             @default(0)
+  taxesTotal   Float             @default(0)
+  total        Float
+  currency     String            @default("EUR")
+  channel      String            @default("DIRECT")
+  notes        String            @default("")
+  vip          Boolean           @default(false)
+  source       String            @default("pms")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  guests       ReservationGuest[]
+  extras       ReservationExtra[]
+  payments     Payment[]
+  channelLinks ChannelReservation[]
+
+  @@index([propertyId, checkIn, checkOut])
+  @@index([propertyId, status])
+  @@index([roomId, checkIn, checkOut])
+  @@index([guestId])
+}
+
+model ReservationGuest {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  guestId       String
+  guest         Guest       @relation(fields: [guestId], references: [id])
+  isPrimary     Boolean     @default(false)
+}
+
+model ReservationExtra {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  extraId       String
+  extra         Extra       @relation(fields: [extraId], references: [id])
+  quantity      Int         @default(1)
+  unitPrice     Float
+  total         Float
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  reservationId String
+  reservation   Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  amount        Float
+  currency      String        @default("EUR")
+  method        PaymentMethod
+  status        PaymentStatus @default(COMPLETED)
+  transactionId String?
+  note          String        @default("")
+  createdAt     DateTime      @default(now())
+}
+
+model HousekeepingTask {
+  id          String               @id @default(cuid())
+  propertyId  String
+  property    Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  status      RoomStatus
+  priority    HousekeepingPriority @default(NORMAL)
+  assigneeId  String?
+  assignee    User?                @relation(fields: [assigneeId], references: [id])
+  notes       String               @default("")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([propertyId, status])
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type       String
+  title      String
+  body       String
+  entity     String?
+  entityId   String?
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId, read, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entity     String
+  entityId   String
+  before     String?
+  after      String?
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId, createdAt])
+  @@index([entity, entityId])
+}
+
+model Channel {
+  id          String      @id @default(cuid())
+  type        ChannelType
+  name        String
+  active      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  connections ChannelConnection[]
+}
+
+model ChannelConnection {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  channelId  String
+  channel    Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  externalId String?
+  active     Boolean  @default(false)
+  settings   String   @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  roomMaps   ChannelRoomMapping[]
+  rateMaps   ChannelRateMapping[]
+  reservations ChannelReservation[]
+
+  @@unique([propertyId, channelId])
+}
+
+model ChannelRoomMapping {
+  id           String            @id @default(cuid())
+  connectionId String
+  connection   ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  roomTypeId   String
+  roomType     RoomType          @relation(fields: [roomTypeId], references: [id])
+  externalId   String
+}
+
+model ChannelRateMapping {
+  id           String            @id @default(cuid())
+  connectionId String
+  connection   ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  ratePlanId   String
+  ratePlan     RatePlan          @relation(fields: [ratePlanId], references: [id])
+  externalId   String
+}
+
+model ChannelReservation {
+  id            String            @id @default(cuid())
+  connectionId  String
+  connection    ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  reservationId String
+  reservation   Reservation       @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  externalId    String
+  payload       String            @default("{}")
+  createdAt     DateTime          @default(now())
+}

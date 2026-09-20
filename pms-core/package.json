@@ -1,0 +1,9 @@
+{
+  "name": "@hospitality/pms-core",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Extractable hospitality PMS core. In this project it is consumed by Next.js via @pms-core/*.",
+  "exports": {
+    "./*": "./*"
+  }
+}

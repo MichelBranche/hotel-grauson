@@ -1,0 +1,177 @@
+/* Maple fall — geometry from Yusuke Nakaya's Only CSS Autumn, scoped to a hero. */
+
+[data-autumn-fall] {
+  --leaf-scale: 1;
+
+  position: absolute;
+  pointer-events: none;
+  container-type: size;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-skin);
+}
+
+/* The leaves are drawn in pixels, so they need trimming on a narrow frame. */
+@media (max-width: 640px) {
+  [data-autumn-fall] {
+    --leaf-scale: 0.66;
+  }
+}
+
+[data-autumn-fall].is-falling {
+  opacity: 1;
+}
+
+[data-autumn-fall="clipped"] {
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Covers `#contenuto` from the hero down to the footer, so a leaf that
+   leaves the frame can keep falling over the rest of the page. */
+[data-autumn-fall="loose"] {
+  inset: 0;
+  z-index: 25;
+  overflow: hidden;
+}
+
+/* The vanishing point belongs to each leaf, not to the layer: across a hero
+   this wide a shared one is seen from ~50° off axis at the edges, which shears
+   the petals into splinters instead of a leaf. So the maple only travels, and
+   the wrapper inside it does the tumbling. */
+[data-autumn-fall] .maple {
+  position: absolute;
+  top: var(--top);
+  left: var(--left);
+  width: 56px;
+  height: 56px;
+  perspective: 700px;
+  transform: translateY(-40cqh) scale(calc(var(--scale) * var(--leaf-scale)));
+}
+
+[data-autumn-fall] .leave-wrap {
+  transform-style: preserve-3d;
+  transform-origin: var(--ox) var(--oy);
+  transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
+}
+
+[data-autumn-fall="clipped"].is-falling .maple {
+  animation: autumn-maple-fall var(--dur) var(--delay) linear infinite;
+}
+
+[data-autumn-fall="loose"].is-falling .maple {
+  animation: autumn-maple-stray calc(var(--fall, 24s) * var(--dur)) var(--delay)
+    linear infinite;
+}
+
+[data-autumn-fall="clipped"].is-falling .leave-wrap {
+  animation: autumn-maple-tumble var(--dur) var(--delay) linear infinite;
+}
+
+[data-autumn-fall="loose"].is-falling .leave-wrap {
+  animation: autumn-maple-tumble var(--spin, 12s) var(--delay) linear infinite;
+}
+
+[data-autumn-fall] .leave-wrap::before {
+  content: "";
+  position: absolute;
+  left: 48px;
+  border-bottom: 40px solid var(--c);
+  border-right: 5px solid transparent;
+}
+
+/* Each petal is a 50px-wide border triangle pivoting on its tip, so the widths
+   below must sit outside the border — `border-box` would swallow them and the
+   fan would come apart. */
+[data-autumn-fall] .leave {
+  box-sizing: content-box;
+  position: absolute;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-right: 50px solid var(--c);
+  transform-origin: 50px 10px;
+}
+
+[data-autumn-fall] .leave:nth-child(1) {
+  transform: rotateZ(-30deg) rotateY(0deg) rotateX(0deg);
+}
+
+[data-autumn-fall] .leave:nth-child(2) {
+  border-right-color: color-mix(in srgb, var(--c) 94%, #f2a868);
+  transform: rotateZ(10deg) rotateY(6deg) rotateX(3deg);
+}
+
+[data-autumn-fall] .leave:nth-child(3) {
+  border-right-color: color-mix(in srgb, var(--c) 88%, #f2a868);
+  transform: rotateZ(50deg) rotateY(12deg) rotateX(6deg);
+}
+
+[data-autumn-fall] .leave:nth-child(4) {
+  border-right-color: color-mix(in srgb, var(--c) 82%, #f2a868);
+  transform: rotateZ(90deg) rotateY(18deg) rotateX(9deg);
+}
+
+[data-autumn-fall] .leave:nth-child(5) {
+  border-right-color: color-mix(in srgb, var(--c) 88%, #4f2c14);
+  transform: rotateZ(130deg) rotateY(24deg) rotateX(12deg);
+}
+
+[data-autumn-fall] .leave:nth-child(6) {
+  border-right-color: color-mix(in srgb, var(--c) 82%, #4f2c14);
+  transform: rotateZ(170deg) rotateY(30deg) rotateX(15deg);
+}
+
+[data-autumn-fall] .leave:nth-child(7) {
+  border-right-color: color-mix(in srgb, var(--c) 90%, #4f2c14);
+  transform: rotateZ(210deg) rotateY(36deg) rotateX(18deg);
+}
+
+[data-autumn-fall] .leave:nth-child(6n + 1) {
+  border-right-width: 25px;
+  width: 25px;
+}
+
+[data-autumn-fall] .leave:nth-child(4n + 2) {
+  border-right-width: 35px;
+  width: 15px;
+}
+
+[data-autumn-fall] .leave:nth-child(6n + 3) {
+  border-right-width: 45px;
+  width: 5px;
+}
+
+@keyframes autumn-maple-fall {
+  0% {
+    transform: translateY(-14cqh) scale(calc(var(--scale) * var(--leaf-scale)));
+  }
+  100% {
+    transform: translateY(120cqh) scale(calc(var(--scale) * var(--leaf-scale)));
+  }
+}
+
+@keyframes autumn-maple-stray {
+  0% {
+    transform: translate(0, -10vh) scale(calc(var(--scale) * var(--leaf-scale)));
+  }
+  100% {
+    transform: translate(var(--dx), 102cqh)
+      scale(calc(var(--scale) * var(--leaf-scale)));
+  }
+}
+
+@keyframes autumn-maple-tumble {
+  0% {
+    transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
+  }
+  100% {
+    transform: rotateX(calc(var(--rx) + 720deg)) rotateY(calc(var(--ry) + 360deg))
+      rotateZ(calc(var(--rz) + 720deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-autumn-fall] {
+    display: none;
+  }
+}
