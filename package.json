@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev --schema pms-core/prisma/schema.prisma",
     "db:push": "prisma db push --schema pms-core/prisma/schema.prisma",
     "db:seed": "tsx pms-core/seed/index.ts",
+    "db:demo": "DATABASE_URL=file:./demo.db prisma migrate deploy --schema pms-core/prisma/schema.prisma && DATABASE_URL=file:./demo.db tsx pms-core/seed/index.ts",
     "db:reset": "prisma migrate reset --schema pms-core/prisma/schema.prisma --force",
     "db:studio": "prisma studio --schema pms-core/prisma/schema.prisma",
     "postinstall": "prisma generate --schema pms-core/prisma/schema.prisma"
