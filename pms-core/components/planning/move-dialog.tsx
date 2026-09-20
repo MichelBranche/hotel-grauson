@@ -59,7 +59,9 @@ export function MoveDialog({
             value={roomId || reservation.roomId}
             onChange={(event) => setRoomId(event.target.value)}
           >
-            {rooms.map((room) => (
+            {rooms
+              .filter((room) => room.active !== false || room.id === reservation.roomId)
+              .map((room) => (
               <option key={room.id} value={room.id}>
                 {room.number} · {room.roomTypeName}
               </option>

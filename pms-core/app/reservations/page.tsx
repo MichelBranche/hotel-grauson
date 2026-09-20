@@ -8,13 +8,21 @@ import { toISODate } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
 import { guestDisplay } from "@pms-core/lib/utils";
 
-export default async function ReservationsPage() {
+export default async function ReservationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ room?: string }>;
+}) {
   const session = await requirePermission("reservations.read");
-  const reservations = await reservationService.list(session.propertyId);
+  const { room } = await searchParams;
+  const reservations = (await reservationService.list(session.propertyId)).filter((item) =>
+    room ? item.room.number === room : true,
+  );
 
   return (
     <div>
       <h1 className="font-[family-name:var(--font-sora)] text-2xl">Prenotazioni</h1>
+      {room ? <p className="mt-1 text-sm text-[var(--pms-muted)]">Filtro camera {room}</p> : null}
       <div className="pms-card mt-5 overflow-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="text-xs text-[var(--pms-muted)]">

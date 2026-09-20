@@ -27,15 +27,16 @@ export function Hero() {
       // plain `to` tweens reading whatever the stylesheet already set.
       const tl = gsap.timeline({ delay: 0.12, defaults: { ease: EASE } });
 
+      const desktop = window.matchMedia("(min-width: 768px)").matches;
+
       tl.to(q("[data-hero-frame]"), {
         clipPath: "inset(0% 0% 0% 0% round 34px)",
         duration: 1.65,
       })
-        .to(q("[data-hero-media]"), { scale: 1, duration: 2.4 }, 0)
-        .to(q("[data-hero-el='eyebrow']"), { opacity: 1, y: 0, duration: 1 }, 0.6)
+        .to(q("[data-hero-media]"), { scale: 1, duration: desktop ? 2.4 : 0 }, 0)
         // `y`, not `yPercent`: GSAP reads the stylesheet's translate3d(0,105%,0)
         // into its pixel channel, so the percentage channel would never move.
-        .to(q("[data-hero-line] > span"), { y: 0, duration: 1.35, stagger: 0.12 }, 0.72)
+        .to(q("[data-hero-line] > span"), { y: 0, duration: 1.35, stagger: 0.12 }, 0.6)
         .to(q("[data-hero-el='lede']"), { opacity: 1, y: 0, duration: 1.1 }, 1.15)
         .to(q("[data-hero-el='note']"), { opacity: 1, y: 0, duration: 1.4 }, 1.2)
         .to(q("[data-hero-el='cta']"), { opacity: 1, y: 0, duration: 1, stagger: 0.12 }, 1.32)
@@ -45,18 +46,20 @@ export function Hero() {
           1.5,
         );
 
-      // Slow cinematic push while the hero leaves the viewport. Added after the
-      // entrance so it owns the media transform only once settled.
-      gsap.to(q("[data-hero-media]"), {
-        yPercent: 7,
-        ease: "none",
-        scrollTrigger: {
-          trigger: scope.current,
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      // Slow cinematic push while the hero leaves the viewport. Desktop only:
+      // a live transform on the photograph makes iOS rasterise it soft.
+      if (desktop) {
+        gsap.to(q("[data-hero-media]"), {
+          yPercent: 7,
+          ease: "none",
+          scrollTrigger: {
+            trigger: scope.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
     },
     { scope },
   );
@@ -66,15 +69,15 @@ export function Hero() {
       <div className="shell relative">
         <div
           data-hero-frame
-          className="relative isolate h-[min(92svh,46rem)] overflow-hidden rounded-[var(--radius-hero)] bg-alpine sm:h-[min(90svh,54rem)]"
+          className="relative isolate min-h-[min(78svh,38rem)] overflow-hidden rounded-[var(--radius-hero)] bg-alpine sm:h-[min(90svh,54rem)] sm:min-h-0"
         >
-          <div data-hero-media className="absolute inset-0 will-change-transform">
+          <div data-hero-media className="absolute inset-0">
             <SeasonalImage
               slot="hero"
               priority
-              sizes="100vw"
-              quality={88}
-              className="object-cover object-[38%_center] sm:object-[42%_center]"
+              sizes="(max-width: 767px) 180vh, 100vw"
+              quality={95}
+              className="object-cover object-[42%_center] sm:object-[42%_center]"
             />
           </div>
 
@@ -94,7 +97,7 @@ export function Hero() {
             className="absolute top-0 right-0 hidden h-[42%] w-[42%] bg-[radial-gradient(ellipse_at_top_right,rgb(16_20_14_/_0.5),transparent_68%)] md:block"
           />
 
-          <div data-hero-scene className="absolute inset-0 z-[2]">
+          <div data-hero-scene className="relative z-[2] sm:absolute sm:inset-0">
           <p
             data-hero-el="note"
             className="hand hand-on-photo absolute top-[6.25rem] right-[var(--gutter)] hidden max-w-[9rem] rotate-[-4deg] text-right text-[1.2rem] text-surface/95 md:block lg:top-[7.25rem] lg:text-[1.35rem]"
@@ -104,15 +107,10 @@ export function Hero() {
             1.800 m
           </p>
 
-          <div className="relative flex h-full flex-col justify-end gap-8 p-[clamp(1.25rem,3vw,3.25rem)] pb-[clamp(1.25rem,2.4vw,2.5rem)] text-surface">
+          <div className="relative flex min-h-[min(78svh,38rem)] flex-col justify-end gap-6 p-5 pb-5 text-surface sm:h-full sm:min-h-0 sm:gap-8 sm:p-[clamp(1.25rem,3vw,3.25rem)] sm:pb-[clamp(1.25rem,2.4vw,2.5rem)]">
             {season === "autunno" ? <AutumnFall /> : null}
             <div className="relative z-[1] max-w-[40rem]">
-              <p data-hero-el="eyebrow" className="eyebrow flex items-center gap-3 text-surface/75">
-                Dal {hotel.since} a {hotel.hamlet}
-                <span aria-hidden className="h-px w-10 bg-surface/35 sm:w-14" />
-              </p>
-
-              <h1 className="display-xl mt-7 sm:mt-9">
+              <h1 className="display-xl">
                 <span data-hero-line>
                   <span>Locanda</span>
                 </span>
@@ -123,16 +121,16 @@ export function Hero() {
 
               <p
                 data-hero-el="lede"
-                className="mt-8 max-w-[26rem] text-[0.95rem] leading-relaxed text-surface/80 sm:mt-10 sm:text-[1.0625rem]"
+                className="mt-6 max-w-[26rem] text-[0.95rem] leading-relaxed text-pretty text-surface/80 sm:mt-10 sm:text-[1.0625rem]"
               >
                 Hotel a Gimillan di Cogne, 1.800 m. Gestione familiare {hotel.family}, dal{" "}
                 {hotel.since}.
               </p>
 
-              <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4 sm:mt-9">
+              <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3 sm:mt-9 sm:gap-x-6 sm:gap-y-4">
                 <span data-hero-el="cta">
                   <MagneticButton>
-                    <ButtonLink href="#la-locanda" variant="light" size="lg">
+                    <ButtonLink href="#la-locanda" variant="light" size="lg" className="max-sm:h-10 max-sm:px-4">
                       La locanda
                     </ButtonLink>
                   </MagneticButton>
@@ -150,7 +148,7 @@ export function Hero() {
                     src="/images/story-fireplace.jpg"
                     alt=""
                     fill
-                    sizes="56px"
+                    sizes="112px"
                     className="object-cover"
                   />
                 </span>

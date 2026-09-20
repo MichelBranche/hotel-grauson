@@ -14,7 +14,7 @@ export function StorySection() {
           <ImageReveal
             src="/images/sala-soggiorno.jpg"
             alt="Il soggiorno della locanda: divano a fiori, muro in pietra e il tavolino con la candela"
-            sizes="(max-width: 1023px) 92vw, 46vw"
+            sizes="(max-width: 767px) 100vw, (max-width: 1023px) 92vw, 46vw"
             radius={26}
             className="aspect-[4/3] w-full sm:aspect-[16/10] lg:aspect-[16/9]"
           >

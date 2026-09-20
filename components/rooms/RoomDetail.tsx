@@ -100,9 +100,6 @@ export function RoomDetail({ room }: { room: Room }) {
                 aria-hidden
                 className="absolute inset-x-0 bottom-0 h-2/5 bg-[linear-gradient(to_top,rgb(18_22_16_/_0.5),transparent)]"
               />
-              <p className="hand hand-on-photo absolute bottom-5 left-6 text-[1.15rem] leading-[1.15] text-surface/92 sm:text-[1.3rem]">
-                Sala comune
-              </p>
             </ImageReveal>
           </div>
 

@@ -15,7 +15,9 @@ export const hotel = {
   phone: "+39 0165 749102",
   phoneHref: "tel:+390165749102",
   email: "info@locandagrauson.it",
-  geo: { lat: 45.6212, lng: 7.3628 },
+  checkIn: "15:00",
+  checkOut: "10:00",
+  geo: { lat: 45.61722, lng: 7.35823 },
   social: {
     instagram: "https://www.instagram.com/",
     facebook: "https://www.facebook.com/",
@@ -34,7 +36,7 @@ export const navLinks = [
   { label: "Camere", href: "/camere" },
   { label: "Ristorante", href: "/ristorante" },
   { label: "Cogne", href: "/cogne" },
-  { label: "Contatti", href: "/#contatti" },
+  { label: "Contatti", href: "/contatti" },
 ] as const;
 
 type FeatureCardBase = {
@@ -92,7 +94,7 @@ export const footerColumns = [
     heading: "Territorio",
     links: [
       { label: "Cogne", href: "/cogne" },
-      { label: "Contatti", href: "/#contatti" },
+      { label: "Contatti", href: "/contatti" },
     ],
   },
 ] as const;

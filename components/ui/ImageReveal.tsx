@@ -46,6 +46,8 @@ export function ImageReveal({
     () => {
       if (reducedMotion()) return;
 
+      const desktop = window.matchMedia("(min-width: 768px)").matches;
+
       gsap
         .timeline({ scrollTrigger: { trigger: frame.current, start: "top 88%" } })
         .to(frame.current, {
@@ -53,9 +55,9 @@ export function ImageReveal({
           duration: 1.5,
           ease: EASE,
         })
-        .to(media.current, { scale: 1, duration: 1.9, ease: EASE }, 0);
+        .to(media.current, { scale: 1, duration: desktop ? 1.9 : 0 }, 0);
 
-      if (parallax > 0) {
+      if (desktop && parallax > 0) {
         gsap.fromTo(
           drift.current,
           { yPercent: -parallax },
@@ -83,7 +85,7 @@ export function ImageReveal({
       style={{ borderRadius: radius, ["--frame-radius" as string]: `${radius}px` }}
     >
       <div ref={drift} className="absolute inset-[-6%]">
-        <div ref={media} data-image-media className="relative h-full w-full will-change-transform">
+        <div ref={media} data-image-media className="relative h-full w-full">
           {seasonal ? (
             <SeasonalImage slot={seasonal} sizes={sizes} priority={priority} className="object-cover" />
           ) : effect ? (

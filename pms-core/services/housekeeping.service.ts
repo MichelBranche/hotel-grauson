@@ -6,7 +6,7 @@ import { roomService } from "@pms-core/services/room.service";
 export const housekeepingService = {
   board(propertyId: string) {
     return prisma.room.findMany({
-      where: { propertyId },
+      where: { propertyId, active: true },
       include: {
         roomType: true,
         housekeepingTasks: { orderBy: { updatedAt: "desc" }, take: 1, include: { assignee: true } },

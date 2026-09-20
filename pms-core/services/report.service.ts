@@ -17,7 +17,9 @@ export const reportService = {
       }),
     ]);
 
-    const sellable = rooms.filter((room) => room.status !== "OUT_OF_ORDER" && room.status !== "OUT_OF_SERVICE").length;
+    const sellable = rooms.filter(
+      (room) => room.active && room.status !== "OUT_OF_ORDER" && room.status !== "OUT_OF_SERVICE",
+    ).length;
     const occupying = reservations.filter((item) => occupyingStatuses.includes(item.status));
     const dates = eachISODate(from, to);
     const series = dates.map((date) => {

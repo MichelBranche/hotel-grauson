@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
     "/*": ["./pms-core/prisma/demo.db"],
   },
   images: {
-    // 88 for the hero photograph, 75 everywhere else.
+    // 95 for the home hero on retina; 88 for other heroes; 75 elsewhere.
     qualities: [75, 88, 95],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 2560, 3840],
   },
   async redirects() {
     return [{ source: "/camere/famiglia", destination: "/camere/standard", permanent: true }];

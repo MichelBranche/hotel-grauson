@@ -290,6 +290,19 @@ img {
   transform: scale(1.14);
 }
 
+/* Mobile: do not pre-scale photographs. A tall object-cover crop already
+   uses most of the source; a CSS upscale makes Next.js 1x/2x bitmaps mushy. */
+@media (max-width: 767px) {
+  .has-motion [data-hero-frame] {
+    clip-path: inset(6% 5% 6% 5% round var(--radius-hero));
+  }
+
+  .has-motion [data-hero-media],
+  .has-motion [data-image-media] {
+    transform: none;
+  }
+}
+
 /* The mask box is padded out (and pulled back with negative margins) so tight
    display leading never clips ascenders or descenders. */
 [data-hero-line] {

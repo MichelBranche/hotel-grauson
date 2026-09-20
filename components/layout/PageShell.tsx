@@ -6,10 +6,16 @@ import { Navbar } from "@/components/layout/Navbar";
 export function PageShell({
   children,
   footerPull = false,
+  footerCompact = false,
+  navOnPaper = false,
 }: {
   children: React.ReactNode;
   /** Pull the footer up so the booking bar can pin over the forest band. */
   footerPull?: boolean;
+  /** Shorter forest band, closer to the page content. */
+  footerCompact?: boolean;
+  /** Pages that open on paper, not a dark hero — ink the wordmark from the first frame. */
+  navOnPaper?: boolean;
 }) {
   return (
     <>
@@ -20,13 +26,13 @@ export function PageShell({
         Salta al contenuto
       </a>
 
-      <Navbar />
+      <Navbar onPaper={navOnPaper} />
 
       <main id="contenuto" className="relative">
         {children}
       </main>
 
-      <Footer pull={footerPull} />
+      <Footer pull={footerPull} compact={footerCompact} />
 
       <SiteEffects />
 

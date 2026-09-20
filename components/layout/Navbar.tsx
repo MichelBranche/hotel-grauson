@@ -28,10 +28,14 @@ const languages = [
 const glassOn = "[backdrop-filter:blur(14px)] [-webkit-backdrop-filter:blur(14px)]";
 const glassOff = "[backdrop-filter:blur(0px)] [-webkit-backdrop-filter:blur(0px)]";
 
-export function Navbar() {
+export function Navbar({ onPaper = false }: { onPaper?: boolean }) {
   const { lights } = useEffects();
   const pathname = usePathname();
-  const prenotaHref = pathname.startsWith("/camere") ? "#prenota" : "/#prenota";
+  const prenotaHref = pathname.startsWith("/booking")
+    ? "#cerca"
+    : pathname.startsWith("/camere")
+      ? "#prenota"
+      : "/#prenota";
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -120,13 +124,14 @@ export function Navbar() {
     { dependencies: [menuOpen] },
   );
 
-  const shellPad = scrolled ? "pt-3" : "pt-6 sm:pt-8 lg:pt-9";
-  const barSkin = scrolled
+  const onLight = scrolled || onPaper;
+  const shellPad = onLight ? "pt-3" : "pt-6 sm:pt-8 lg:pt-9";
+  const barSkin = onLight
     ? `bg-paper/85 px-3 py-2 shadow-[0_10px_40px_-26px_rgb(37_39_33_/_0.5)] [border-color:rgb(37_39_33_/_0.08)] [backdrop-filter:blur(22px)] [-webkit-backdrop-filter:blur(22px)]`
     : `mx-1 bg-paper/0 px-2 py-0 shadow-[0_10px_40px_-26px_rgb(37_39_33_/_0)] border-transparent sm:mx-2 sm:px-3 lg:mx-3 lg:px-5 ${glassOff}`;
   return (
     <header
-      data-nav={scrolled ? "solid" : "float"}
+      data-nav={onLight ? "solid" : "float"}
       className="pointer-events-none fixed inset-x-0 top-0 z-50"
     >
       <div
@@ -140,14 +145,7 @@ export function Navbar() {
             aria-label={`${hotel.name}, torna all'inizio`}
             className="shrink-0 pl-1 sm:pl-2"
           >
-            <Wordmark
-              priority
-              className={
-                scrolled
-                  ? "[filter:brightness(0)_drop-shadow(0_1px_14px_rgb(20_24_18_/_0))]"
-                  : "[filter:brightness(1)_drop-shadow(0_1px_14px_rgb(20_24_18_/_0.45))]"
-              }
-            />
+            <Wordmark priority ink={onLight} />
           </Link>
 
           <nav aria-label="Navigazione principale" className="hidden lg:block">
@@ -176,7 +174,7 @@ export function Navbar() {
                 aria-haspopup="menu"
                 aria-label="Cambia lingua, lingua attuale italiano"
                 className={`relative isolate flex h-10 items-center gap-1.5 rounded-full px-4 text-[0.8125rem] font-medium text-ink transition-colors duration-500 [transition-timing-function:var(--ease-skin)] ${
-                  scrolled ? "hover:bg-[rgb(37_39_33_/_0.05)]" : ""
+                  onLight ? "hover:bg-[rgb(37_39_33_/_0.05)]" : ""
                 }`}
               >
                 <span aria-hidden className="nav-chip" />
@@ -233,7 +231,7 @@ export function Navbar() {
               aria-expanded={menuOpen}
               aria-controls="menu-mobile"
               className={`grid size-11 place-items-center rounded-full border transition-all duration-700 [transition-timing-function:var(--ease-skin)] lg:hidden ${
-                scrolled
+                onLight
                   ? `border-[rgb(37_39_33_/_0.12)] bg-surface text-ink ${glassOff}`
                   : `border-[rgb(255_255_255_/_0.3)] bg-surface/75 text-ink ${glassOn}`
               }`}
@@ -248,7 +246,7 @@ export function Navbar() {
             Painted after the bar, so the clips read as hooked onto its edge.
             Only shown once the bar is solid: over the floating chips there is
             no edge to hang from. */}
-        {lights ? <NavbarLights visible={scrolled} /> : null}
+        {lights ? <NavbarLights visible={onLight} /> : null}
       </div>
 
       {/* Mobile / tablet overlay */}
@@ -333,5 +331,6 @@ function isCurrent(pathname: string, href: string) {
   if (href === "/camere") return pathname === "/camere" || pathname.startsWith("/camere/");
   if (href === "/ristorante") return pathname === "/ristorante";
   if (href === "/cogne") return pathname === "/cogne";
+  if (href === "/contatti") return pathname === "/contatti";
   return false;
 }

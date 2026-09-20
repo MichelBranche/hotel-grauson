@@ -62,12 +62,14 @@ async function quoteStay(input: {
   const property = await prisma.property.findUnique({ where: { id: input.propertyId } });
   const taxRate = parseJson<{ taxRate?: number }>(property?.settings ?? "{}", {}).taxRate ?? 0.1;
 
-  let roomRate = 0;
+  const roomType = await prisma.roomType.findUnique({ where: { id: input.roomTypeId } });
+  const fallbackNightly = roomType?.basePrice ?? 0;
+  let roomRate = fallbackNightly * nights;
   if (input.ratePlanId) {
     const base = await prisma.ratePlanPrice.findUnique({
       where: { ratePlanId_roomTypeId: { ratePlanId: input.ratePlanId, roomTypeId: input.roomTypeId } },
     });
-    roomRate = (base?.basePrice ?? 0) * nights;
+    roomRate = (base?.basePrice ?? fallbackNightly) * nights;
   }
 
   const extras = [];

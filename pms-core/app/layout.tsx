@@ -22,7 +22,7 @@ export async function PmsConsoleLayout({ children }: { children: React.ReactNode
 
 export function PmsRootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div data-pms className="min-h-dvh">
+    <div data-pms className="h-dvh overflow-hidden">
       <PmsProviders>{children}</PmsProviders>
     </div>
   );

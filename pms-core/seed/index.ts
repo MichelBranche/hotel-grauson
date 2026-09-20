@@ -32,6 +32,7 @@ async function main() {
   await prisma.extra.deleteMany();
   await prisma.ratePlan.deleteMany();
   await prisma.room.deleteMany();
+  await prisma.floor.deleteMany();
   await prisma.roomType.deleteMany();
   await prisma.guest.deleteMany();
   await prisma.user.deleteMany();
@@ -95,14 +96,96 @@ async function main() {
     ],
   });
 
+  const floors = await Promise.all(
+    [
+      { name: "ground", displayName: "Piano terra", sortOrder: 0, description: "Ingresso, reception e spazi comuni." },
+      { name: "1", displayName: "1° piano", sortOrder: 1, description: "Camere standard e superior." },
+      { name: "2", displayName: "2° piano", sortOrder: 2, description: "Deluxe, junior suite e suite." },
+      { name: "3", displayName: "3° piano", sortOrder: 3, description: "Family e standard al piano alto." },
+    ].map((floor) => prisma.floor.create({ data: { propertyId: property.id, ...floor } })),
+  );
+  const floorByOrder = Object.fromEntries(floors.map((floor) => [floor.sortOrder, floor]));
+
   const types = await Promise.all(
     [
-      { name: "Standard", slug: "standard", capacity: 2, sortOrder: 1 },
-      { name: "Superior", slug: "superior", capacity: 3, sortOrder: 2 },
-      { name: "Deluxe", slug: "deluxe", capacity: 2, sortOrder: 3 },
-      { name: "Junior Suite", slug: "junior-suite", capacity: 3, sortOrder: 4 },
-      { name: "Suite", slug: "suite", capacity: 4, sortOrder: 5 },
-      { name: "Family", slug: "family", capacity: 4, sortOrder: 6 },
+      {
+        name: "Standard",
+        code: "STD",
+        slug: "standard",
+        capacity: 2,
+        maxAdults: 2,
+        maxChildren: 0,
+        sizeM2: 16,
+        beds: "Letto matrimoniale",
+        bathroom: "Bagno privato con doccia",
+        basePrice: 120,
+        sortOrder: 1,
+      },
+      {
+        name: "Superior",
+        code: "SUP",
+        slug: "superior",
+        capacity: 3,
+        maxAdults: 2,
+        maxChildren: 1,
+        sizeM2: 18,
+        beds: "Matrimoniale + singolo",
+        bathroom: "Bagno privato con doccia",
+        basePrice: 145,
+        sortOrder: 2,
+      },
+      {
+        name: "Deluxe",
+        code: "DLX",
+        slug: "deluxe",
+        capacity: 2,
+        maxAdults: 2,
+        maxChildren: 0,
+        sizeM2: 20,
+        beds: "Letto matrimoniale king",
+        bathroom: "Bagno privato con doccia e finestra",
+        basePrice: 180,
+        sortOrder: 3,
+      },
+      {
+        name: "Junior Suite",
+        code: "JSU",
+        slug: "junior-suite",
+        capacity: 3,
+        maxAdults: 2,
+        maxChildren: 1,
+        sizeM2: 24,
+        beds: "Matrimoniale + divano letto",
+        bathroom: "Bagno privato con vasca",
+        basePrice: 210,
+        sortOrder: 4,
+      },
+      {
+        name: "Suite",
+        code: "STE",
+        slug: "suite",
+        capacity: 4,
+        maxAdults: 3,
+        maxChildren: 1,
+        sizeM2: 32,
+        beds: "Matrimoniale + due singoli",
+        bathroom: "Bagno privato con vasca e doccia",
+        basePrice: 260,
+        sortOrder: 5,
+      },
+      {
+        name: "Family",
+        code: "FAM",
+        slug: "family",
+        capacity: 4,
+        maxAdults: 2,
+        maxChildren: 2,
+        sizeM2: 28,
+        beds: "Matrimoniale + due singoli",
+        bathroom: "Bagno privato con doccia",
+        basePrice: 200,
+        sortOrder: 6,
+      },
     ].map((type) =>
       prisma.roomType.create({
         data: {
@@ -138,10 +221,11 @@ async function main() {
         data: {
           propertyId: property.id,
           roomTypeId: typeBySlug[room.slug].id,
+          floorId: floorByOrder[room.floor].id,
           number: room.number,
           floor: room.floor,
           capacity: typeBySlug[room.slug].capacity,
-          beds: typeBySlug[room.slug].capacity >= 3 ? "Matrimoniale + singolo" : "Matrimoniale",
+          beds: typeBySlug[room.slug].beds,
           status: room.status ?? "AVAILABLE",
           notes: room.notes ?? "",
           sortOrder: index,

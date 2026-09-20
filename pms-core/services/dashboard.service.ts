@@ -19,7 +19,8 @@ export const dashboardService = {
     ]);
 
     const today = from;
-    const sellable = rooms.filter((room) => room.status !== "OUT_OF_ORDER" && room.status !== "OUT_OF_SERVICE");
+    const inventory = rooms.filter((room) => room.active);
+    const sellable = inventory.filter((room) => room.status !== "OUT_OF_ORDER" && room.status !== "OUT_OF_SERVICE");
     const occupying = reservations.filter((item) => occupyingStatuses.includes(item.status));
     const occupiedToday = occupying.filter(
       (item) => toISODate(item.checkIn) <= today && toISODate(item.checkOut) > today,
@@ -35,10 +36,11 @@ export const dashboardService = {
     const occupancy = availableNights ? occupiedNights / availableNights : 0;
 
     return {
-      totalRooms: rooms.length,
+      totalRooms: inventory.length,
       occupied: occupiedToday,
       free: Math.max(sellable.length - occupiedToday, 0),
-      cleaning: rooms.filter((room) => room.status === "CLEANING" || room.status === "DIRTY").length,
+      cleaning: inventory.filter((room) => room.status === "CLEANING" || room.status === "DIRTY").length,
+      outOfOrder: inventory.filter((room) => room.status === "OUT_OF_ORDER" || room.status === "OUT_OF_SERVICE").length,
       arrivals: reservations.filter((item) => toISODate(item.checkIn) === today && item.status !== "CANCELLED").length,
       departures: reservations.filter((item) => toISODate(item.checkOut) === today && item.status !== "CANCELLED").length,
       occupancy,

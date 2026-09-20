@@ -12,12 +12,14 @@ const socials = [
   { label: "Facebook", href: hotel.social.facebook, Icon: FacebookIcon },
 ];
 
-export function Footer({ pull = false }: { pull?: boolean }) {
+export function Footer({ pull = false, compact = false }: { pull?: boolean; compact?: boolean }) {
   return (
     <footer
       id="contatti"
-      className={`on-dark relative -mt-8 sm:-mt-10 ${
-        pull ? "lg:-mt-[calc(var(--bar-travel)+2.5rem)]" : "lg:-mt-12"
+      className={`on-dark relative ${
+        compact
+          ? "-mt-10 sm:-mt-14 lg:-mt-16"
+          : `-mt-8 sm:-mt-10 ${pull ? "lg:-mt-[calc(var(--bar-travel)+2.5rem)]" : "lg:-mt-12"}`
       }`}
     >
       {/* Forest horizon: the page dissolving into the valley. The height tracks
@@ -25,7 +27,13 @@ export function Footer({ pull = false }: { pull?: boolean }) {
           would slice deeper into the ridges and treetops the wider the screen.
           30vw sits just under the panorama's own 2.97:1 ratio, so only the empty
           top of the sky is trimmed and nothing is cropped left or right. */}
-      <div className="relative h-[58vw] sm:h-[38vw] lg:h-[min(30vw,50rem)]">
+      <div
+        className={
+          compact
+            ? "relative h-[36vw] sm:h-[24vw] lg:h-[min(18vw,22rem)]"
+            : "relative h-[58vw] sm:h-[38vw] lg:h-[min(30vw,50rem)]"
+        }
+      >
         <AlpineForest />
         {/* Clears the booking bar, which overlaps the top of the band. */}
         <p className="hand absolute top-[30%] right-[var(--gutter)] max-w-[10rem] rotate-[-3deg] text-right text-[1.15rem] leading-[1.2] text-alpine/55 sm:top-[17%] sm:text-[1.35rem]">

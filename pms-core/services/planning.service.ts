@@ -14,7 +14,7 @@ function colorFor(id: string) {
 export const planningService = {
   async get(propertyId: string, from: string, to: string): Promise<PlanningData> {
     const [rooms, reservations] = await Promise.all([
-      roomRepo.list(propertyId),
+      roomRepo.listForPlanning(propertyId, from, to),
       reservationRepo.listInRange(propertyId, from, to),
     ]);
 
@@ -27,10 +27,13 @@ export const planningService = {
         number: room.number,
         name: room.name,
         floor: room.floor,
+        floorId: room.floorId,
+        floorName: room.assignedFloor?.displayName ?? null,
         capacity: room.capacity,
         status: room.status,
         roomTypeId: room.roomTypeId,
         roomTypeName: room.roomType.name,
+        active: room.active,
       })),
       reservations: reservations.map(
         (reservation): PlanningReservation => ({

@@ -28,6 +28,7 @@ export default async function PlanningPage() {
         <KpiCard icon={BedDouble} label="Occupate" value={kpis.occupied} hint={`${Math.round(kpis.occupancy * 100)}%`} />
         <KpiCard icon={BedDouble} label="Libere" value={kpis.free} />
         <KpiCard icon={Sparkles} label="In pulizia" value={kpis.cleaning} />
+        <KpiCard icon={BedDouble} label="Fuori servizio" value={kpis.outOfOrder} />
         <KpiCard icon={CalendarDays} label="Arrivi oggi" value={kpis.arrivals} />
         <KpiCard icon={CalendarDays} label="Partenze oggi" value={kpis.departures} />
       </div>

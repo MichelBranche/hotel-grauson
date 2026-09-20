@@ -6,7 +6,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { SeasonalImage } from "@/components/ui/SeasonalImage";
 import { featureCards } from "@/lib/content";
 
-const cardSizes = "(max-width: 767px) 78vw, (max-width: 1439px) 40vw, 640px";
+const cardSizes = "(max-width: 767px) 100vw, (max-width: 1439px) 40vw, 640px";
 
 export function FeatureCards() {
   return (
@@ -16,7 +16,7 @@ export function FeatureCards() {
       </h2>
 
       <Reveal
-        className="-mx-[var(--gutter)] flex snap-x snap-mandatory gap-3 overflow-x-auto px-[var(--gutter)] pb-1 [scrollbar-width:none] sm:gap-4 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden"
+        className="grid gap-3 sm:gap-4 md:grid-cols-3"
         y={34}
         stagger={0.11}
       >
@@ -26,7 +26,7 @@ export function FeatureCards() {
             id={card.id}
             href={card.href}
             data-reveal
-            className="group relative block w-[78vw] shrink-0 snap-start overflow-hidden rounded-[var(--radius-card)] bg-surface-deep transition-[transform,box-shadow] duration-[600ms] [transition-timing-function:var(--ease-out)] hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] sm:w-[62vw] md:w-auto"
+            className="group relative block overflow-hidden rounded-[var(--radius-card)] bg-surface-deep transition-[transform,box-shadow] duration-[600ms] [transition-timing-function:var(--ease-out)] hover:-translate-y-1 hover:shadow-[var(--shadow-lift)]"
             aria-label={`${card.title} — ${card.description}`}
           >
             <div className="relative aspect-[4/3] w-full sm:aspect-[3/2]">

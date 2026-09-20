@@ -23,7 +23,7 @@ export default async function AvailabilityPage() {
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         {offers.map((offer) => (
           <article key={offer.roomTypeId} className="pms-card p-5">
-            <h2 className="font-medium">{offer.roomTypeName}</h2>
+            <h2 className="pms-title">{offer.roomTypeName}</h2>
             <p className="text-sm text-[var(--pms-muted)]">{offer.remaining} camere · {offer.availableRooms.map((room) => room.number).join(", ")}</p>
             <ul className="mt-3 space-y-1 text-sm">
               {offer.ratePlans.map((plan) => (

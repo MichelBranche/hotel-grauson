@@ -248,7 +248,7 @@ export function PlanningBoard({
         </div>
 
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div ref={scroller} className="pms-card min-h-[32rem] overflow-auto pms-scroll">
+          <div ref={scroller} className="pms-card max-h-[min(70dvh,44rem)] min-h-[28rem] overflow-auto overscroll-contain pms-scroll">
             <div style={{ minWidth: ROOM_COL + days.length * dayWidth }}>
               <div className="sticky top-0 z-20 flex border-b border-[var(--pms-line)] bg-[var(--pms-surface)]">
                 <div className="sticky left-0 z-30 flex w-[188px] shrink-0 items-center gap-6 bg-[var(--pms-surface)] px-4 text-xs text-[var(--pms-muted)]">
@@ -269,7 +269,11 @@ export function PlanningBoard({
                     <BedDouble className="size-4 text-[var(--pms-muted)]" />
                     <span>
                       <span className="block text-sm font-medium">{room.number}</span>
-                      <span className="block text-[11px] text-[var(--pms-muted)]">{room.roomTypeName}</span>
+                      <span className="block text-[11px] text-[var(--pms-muted)]">
+                        {room.roomTypeName}
+                        {room.floorName ? ` · ${room.floorName}` : ""}
+                        {room.active === false ? " · storico" : ""}
+                      </span>
                     </span>
                     {room.status !== "AVAILABLE" && room.status !== "OCCUPIED" ? (
                       <StatusBadge label={roomStatusMeta[room.status].label} tone={roomStatusMeta[room.status].tone} />

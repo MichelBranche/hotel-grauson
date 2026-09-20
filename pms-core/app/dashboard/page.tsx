@@ -33,6 +33,7 @@ export default async function DashboardPage() {
         <KpiCard icon={Euro} label="Revenue" value={formatMoney(kpis.revenue)} />
         <KpiCard icon={BedDouble} label="Occupate" value={kpis.occupied} />
         <KpiCard icon={BedDouble} label="Libere" value={kpis.free} />
+        <KpiCard icon={BedDouble} label="Fuori servizio" value={kpis.outOfOrder} />
         <KpiCard icon={CalendarDays} label="Arrivi oggi" value={kpis.arrivals} />
         <KpiCard icon={CalendarDays} label="Partenze oggi" value={kpis.departures} />
       </div>

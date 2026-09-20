@@ -97,6 +97,7 @@ model Property {
   updatedAt        DateTime @updatedAt
 
   users            User[]
+  floors           Floor[]
   rooms            Room[]
   roomTypes        RoomType[]
   guests           Guest[]
@@ -129,16 +130,41 @@ model User {
   assignedTasks  HousekeepingTask[]
 }
 
+model Floor {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name        String
+  displayName String
+  sortOrder   Int      @default(0)
+  description String   @default("")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rooms       Room[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId, sortOrder])
+}
+
 model RoomType {
   id            String   @id @default(cuid())
   propertyId    String
   property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   name          String
+  code          String   @default("")
   slug          String
   description   String   @default("")
   capacity      Int
+  maxAdults     Int      @default(0)
+  maxChildren   Int      @default(0)
+  sizeM2        Float?
+  beds          String   @default("")
+  bathroom      String   @default("")
   amenities     String   @default("[]")
   images        String   @default("[]")
+  basePrice     Float    @default(0)
+  active        Boolean  @default(true)
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -150,30 +176,38 @@ model RoomType {
   channelMaps   ChannelRoomMapping[]
 
   @@unique([propertyId, slug])
+  @@unique([propertyId, code])
+  @@index([propertyId, active])
 }
 
 model Room {
-  id           String     @id @default(cuid())
-  propertyId   String
-  property     Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  roomTypeId   String
-  roomType     RoomType   @relation(fields: [roomTypeId], references: [id])
-  number       String
-  name         String?
-  floor        Int
-  capacity     Int
-  beds         String     @default("")
-  amenities    String     @default("[]")
-  status       RoomStatus @default(AVAILABLE)
-  notes        String     @default("")
-  sortOrder    Int        @default(0)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  reservations Reservation[]
+  id              String     @id @default(cuid())
+  propertyId      String
+  property        Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeId      String
+  roomType        RoomType   @relation(fields: [roomTypeId], references: [id])
+  floorId         String?
+  assignedFloor   Floor?     @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  number          String
+  name            String?
+  floor           Int
+  capacity        Int
+  beds            String     @default("")
+  amenities       String     @default("[]")
+  status          RoomStatus @default(AVAILABLE)
+  notes           String     @default("")
+  customBasePrice Float?
+  active          Boolean    @default(true)
+  sortOrder       Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  reservations    Reservation[]
   housekeepingTasks HousekeepingTask[]
 
   @@unique([propertyId, number])
   @@index([propertyId, status])
+  @@index([propertyId, active])
+  @@index([propertyId, floorId])
 }
 
 model Guest {

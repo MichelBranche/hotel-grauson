@@ -37,7 +37,7 @@ export function AppShell({
   }
 
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex h-dvh overflow-hidden">
       <Sidebar role={user.role} mobileOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
       {menuOpen ? (
         <button
@@ -47,7 +47,7 @@ export function AppShell({
           onClick={() => setMenuOpen(false)}
         />
       ) : null}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Topbar
           user={user}
           unread={unread}
@@ -55,7 +55,7 @@ export function AppShell({
           onNotifications={() => setNotesOpen(true)}
           onMenu={() => setMenuOpen((value) => !value)}
         />
-        <main className="min-h-0 flex-1 overflow-auto pms-scroll px-4 pb-6 md:px-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-auto overscroll-contain pms-scroll px-4 pb-6 md:px-6">{children}</main>
       </div>
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
       <NotificationCenter

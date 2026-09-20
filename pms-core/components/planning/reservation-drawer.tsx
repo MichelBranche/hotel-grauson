@@ -49,7 +49,7 @@ export function ReservationDrawer({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-[var(--pms-muted)]">#{reservation.code}</p>
-          <h2 className="mt-1 font-[family-name:var(--font-sora)] text-xl">{reservation.guestName}</h2>
+          <h2 className="pms-title mt-1 text-xl">{reservation.guestName}</h2>
         </div>
         <StatusBadge label={meta.label} tone={meta.tone} />
       </div>

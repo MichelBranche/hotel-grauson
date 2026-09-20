@@ -25,10 +25,11 @@ export const availabilityService = {
     const guests = query.adults + (query.children ?? 0);
     const dates = eachISODate(query.checkIn, query.checkOut);
 
-    const [roomTypes, rooms, reservations, inventory, prices, dailyRates] = await Promise.all([
+    const [roomTypes, rooms, reservations, inventory, prices, dailyRates, ratePlans] = await Promise.all([
       prisma.roomType.findMany({
         where: {
           propertyId: query.propertyId,
+          active: true,
           ...(query.roomTypeId ? { id: query.roomTypeId } : {}),
         },
         orderBy: { sortOrder: "asc" },
@@ -36,6 +37,7 @@ export const availabilityService = {
       prisma.room.findMany({
         where: {
           propertyId: query.propertyId,
+          active: true,
           ...(query.roomTypeId ? { roomTypeId: query.roomTypeId } : {}),
         },
       }),
@@ -63,6 +65,9 @@ export const availabilityService = {
           date: { gte: toDate(query.checkIn), lt: toDate(query.checkOut) },
         },
       }),
+      prisma.ratePlan.findMany({
+        where: { propertyId: query.propertyId, active: true },
+      }),
     ]);
 
     const occupied = new Set(reservations.map((item) => item.roomId));
@@ -82,8 +87,22 @@ export const availabilityService = {
         const blockedByInventory = dates.some((date) => closed.has(`${type.id}:${date}`));
         const availableRooms = blockedByInventory ? [] : typeRooms.map((room) => ({ id: room.id, number: room.number }));
 
-        const ratePlans = prices
-          .filter((price) => price.roomTypeId === type.id && price.ratePlan.active && price.ratePlan.propertyId === query.propertyId)
+        const pricedPlans = prices.filter(
+          (price) => price.roomTypeId === type.id && price.ratePlan.active && price.ratePlan.propertyId === query.propertyId,
+        );
+        const fallbackPlans =
+          pricedPlans.length > 0
+            ? pricedPlans
+            : type.basePrice > 0
+              ? ratePlans.map((plan) => ({
+                  ratePlanId: plan.id,
+                  roomTypeId: type.id,
+                  basePrice: type.basePrice,
+                  ratePlan: plan,
+                }))
+              : [];
+
+        const offerPlans = fallbackPlans
           .filter((price) => nights >= price.ratePlan.minimumStay)
           .filter((price) => !price.ratePlan.maximumStay || nights <= price.ratePlan.maximumStay)
           .filter((price) => !price.ratePlan.closedToArrival)
@@ -116,7 +135,7 @@ export const availabilityService = {
           capacity: type.capacity,
           availableRooms,
           remaining: availableRooms.length,
-          ratePlans,
+          ratePlans: offerPlans,
         };
       })
       .filter((offer) => offer.remaining > 0 && offer.ratePlans.length > 0);
@@ -132,6 +151,9 @@ export const availabilityService = {
   }) {
     const room = await prisma.room.findUnique({ where: { id: input.roomId }, include: { roomType: true } });
     if (!room) throw new DomainError("La camera selezionata non esiste.");
+    if (!room.active || !room.roomType.active) {
+      throw new DomainError(`La camera ${room.number} non è disponibile per nuove prenotazioni.`);
+    }
     if (blockedRoomStatuses.includes(room.status)) {
       throw new DomainError(`La camera ${room.number} non è disponibile: risulta in ${room.status === "OUT_OF_ORDER" ? "fuori servizio" : "manutenzione"}.`);
     }

@@ -16,10 +16,14 @@
   color: var(--pms-text);
   background: var(--pms-bg);
   font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  height: 100dvh;
   min-height: 100dvh;
+  overflow: hidden;
 }
 
+html:has([data-pms]),
 body:has([data-pms]) {
+  height: 100%;
   background: var(--pms-bg, #f1eee6);
   overflow: hidden;
 }
@@ -29,6 +33,13 @@ body:has([data-pms]) {
 [data-pms] select,
 [data-pms] textarea {
   font: inherit;
+}
+
+[data-pms] .pms-title {
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.25;
 }
 
 [data-pms] .pms-card {

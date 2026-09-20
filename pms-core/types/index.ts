@@ -49,10 +49,13 @@ export type PlanningRoom = {
   number: string;
   name: string | null;
   floor: number;
+  floorId: string | null;
+  floorName: string | null;
   capacity: number;
   status: RoomStatus;
   roomTypeId: string;
   roomTypeName: string;
+  active: boolean;
 };
 
 export type PlanningData = {
@@ -94,6 +97,7 @@ export type KpiSnapshot = {
   occupied: number;
   free: number;
   cleaning: number;
+  outOfOrder: number;
   arrivals: number;
   departures: number;
   occupancy: number;
