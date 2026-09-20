@@ -1,8 +1,6 @@
-import { format } from "date-fns";
-import { it } from "date-fns/locale";
-
 import { reservationStatusMeta } from "@pms-core/config/status";
 import { StatusBadge } from "@pms-core/components/ui/badge";
+import { formatLong, toISODate } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
 import { guestDisplay } from "@pms-core/lib/utils";
 
@@ -54,9 +52,7 @@ export function OccupancyWidget({
             <li key={item.id} className="flex items-center justify-between gap-3 text-sm">
               <span>
                 <span className="block font-medium">{guestDisplay(item.guest.firstName, item.guest.lastName)}</span>
-                <span className="text-xs text-[var(--pms-muted)]">
-                  {format(item.checkIn, "d MMM yyyy", { locale: it })}
-                </span>
+                <span className="text-xs text-[var(--pms-muted)]">{formatLong(toISODate(item.checkIn))}</span>
               </span>
               <span className="flex items-center gap-2">
                 <span>{formatMoney(item.total, item.currency)}</span>

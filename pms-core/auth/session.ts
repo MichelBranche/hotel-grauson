@@ -1,16 +1,13 @@
 import { SignJWT, jwtVerify } from "jose";
 
+import { getAuthSecret } from "@pms-core/config/demo";
 import type { SessionUser } from "@pms-core/types";
 
 export const SESSION_COOKIE = "pms_session";
 const MAX_AGE = 60 * 60 * 12;
 
 function secret() {
-  const value = process.env.AUTH_SECRET;
-  if (!value) {
-    throw new Error("AUTH_SECRET is not configured.");
-  }
-  return new TextEncoder().encode(value);
+  return new TextEncoder().encode(getAuthSecret());
 }
 
 export async function signSession(user: SessionUser) {

@@ -5,13 +5,14 @@ import { useState } from "react";
 
 import { loginAction } from "@pms-core/actions/auth";
 import { branding } from "@pms-core/config/branding";
+import { DEMO_LOGIN } from "@pms-core/config/demo";
 import { Button } from "@pms-core/components/ui/button";
 import { Field, Input } from "@pms-core/components/ui/input";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("michel.branche@grauson.local");
-  const [password, setPassword] = useState("Grauson2026!");
+  const [email, setEmail] = useState<string>(DEMO_LOGIN.email);
+  const [password, setPassword] = useState<string>(DEMO_LOGIN.password);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -46,10 +47,12 @@ export default function LoginPage() {
         >
           <p className="text-xs tracking-[0.22em] text-[var(--pms-muted)]">PROPERTY MANAGEMENT</p>
           <h1 className="mt-2 font-[family-name:var(--font-sora)] text-3xl">Accedi al PMS</h1>
-          <p className="mt-2 text-sm text-[var(--pms-muted)]">Area riservata alla reception e alla gestione della locanda.</p>
+          <p className="mt-2 text-sm text-[var(--pms-muted)]">
+            Demo operativa: le credenziali della reception sono già compilate. Entra per esplorare planning, camere e housekeeping.
+          </p>
           <div className="mt-8 grid gap-4">
             <Field label="Email">
-              <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
+              <Input type="text" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
             </Field>
             <Field label="Password">
               <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />

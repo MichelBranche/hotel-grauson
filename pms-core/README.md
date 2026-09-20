@@ -133,7 +133,7 @@ Do not commit secrets.
 
 ## Deployment
 
-Deploy as the same Next.js app as the hotel website. For production persistence on serverless hosts, switch the Prisma provider to PostgreSQL and set `DATABASE_URL`. Keep one app, one database, one PMS.
+Deploy as the same Next.js app as the hotel website. The current Vercel deploy is a demonstration: it signs sessions with a fallback `AUTH_SECRET` and copies the committed SQLite snapshot `prisma/demo.db` into `/tmp`. Writes do not persist across instances. When the product is confirmed, switch the Prisma provider to PostgreSQL, set `DATABASE_URL` and `AUTH_SECRET`, and remove the demo fallback. Keep one app, one database, one PMS.
 
 ## HOW TO EXTRACT PMS CORE
 

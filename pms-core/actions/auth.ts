@@ -11,7 +11,11 @@ import { prisma } from "@pms-core/database/client";
 import { wrapAction } from "@pms-core/actions/result";
 
 const loginSchema = z.object({
-  email: z.string().email("Inserisci un indirizzo email valido."),
+  email: z
+    .string()
+    .trim()
+    .min(3, "Inserisci un indirizzo email valido.")
+    .refine((value) => value.includes("@"), "Inserisci un indirizzo email valido."),
   password: z.string().min(8, "La password deve contenere almeno 8 caratteri."),
 });
 
@@ -40,7 +44,11 @@ export async function loginAction(input: { email: string; password: string }) {
       organizationId: user.organizationId,
     });
 
-    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    try {
+      await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    } catch {
+      // Read-only demo snapshots should still sign in.
+    }
     const jar = await cookies();
     const options = sessionCookieOptions();
     jar.set(options.name, token, options);

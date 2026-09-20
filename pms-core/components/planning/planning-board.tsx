@@ -66,8 +66,8 @@ function Block({
       <span className="min-w-0 truncate font-medium">{reservation.guestName}</span>
       <span className="hidden truncate text-[11px] opacity-70 lg:inline">{reservation.adults + reservation.children} ospiti</span>
       <span className="ml-auto hidden text-[10px] opacity-70 xl:inline">{meta.label}</span>
-      <button
-        type="button"
+      <span
+        role="separator"
         aria-label="Modifica check-out"
         className="absolute top-1 right-1 h-8 w-2 cursor-ew-resize rounded-full bg-black/15"
         onPointerDown={(event) => {
