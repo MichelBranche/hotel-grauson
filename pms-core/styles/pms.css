@@ -72,3 +72,111 @@ body:has([data-pms]) {
     --pms-sidebar: 0px;
   }
 }
+
+@keyframes pms-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pms-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes pms-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 16px)) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes pms-dialog-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px)) scale(0.985);
+  }
+}
+
+@keyframes pms-sheet-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 22px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes pms-sheet-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+}
+
+.pms-dialog-content {
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.pms-dialog-overlay[data-state="open"] {
+  animation: pms-overlay-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pms-dialog-overlay[data-state="closed"] {
+  animation: pms-overlay-out 180ms ease both;
+}
+
+.pms-dialog-content[data-state="open"] {
+  animation: pms-dialog-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pms-dialog-content[data-state="closed"] {
+  animation: pms-dialog-out 200ms ease both;
+}
+
+@media (max-width: 639px) {
+  .pms-dialog-content {
+    top: auto;
+    bottom: 0.75rem;
+    transform: translate(-50%, 0);
+  }
+
+  .pms-dialog-content[data-state="open"] {
+    animation: pms-sheet-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .pms-dialog-content[data-state="closed"] {
+    animation: pms-sheet-out 200ms ease both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pms-dialog-overlay[data-state="open"],
+  .pms-dialog-overlay[data-state="closed"],
+  .pms-dialog-content[data-state="open"],
+  .pms-dialog-content[data-state="closed"] {
+    animation-duration: 0.01ms;
+  }
+}

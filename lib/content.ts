@@ -100,7 +100,7 @@ export const footerColumns = [
 ] as const;
 
 export const legalLinks = [
-  { label: "Privacy", href: "#privacy" },
-  { label: "Cookie", href: "#cookie" },
-  { label: "Credits", href: "#credits" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Cookie", href: "/privacy#cookie" },
+  { label: "Credits", href: "/privacy#credits" },
 ] as const;

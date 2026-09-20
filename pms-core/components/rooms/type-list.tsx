@@ -25,7 +25,13 @@ export function TypeList({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<"all" | "active" | "inactive">("all");
   const [editing, setEditing] = useState<StructureType | null | "new">(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<StructureType | null>(null);
+
+  function openForm(next: StructureType | "new") {
+    setEditing(next);
+    setFormOpen(true);
+  }
 
   const filtered = useMemo(
     () =>
@@ -54,7 +60,7 @@ export function TypeList({
             <option value="inactive">Disattivate</option>
           </Select>
         </label>
-        {canWrite ? <Button onClick={() => setEditing("new")}>Nuova tipologia</Button> : null}
+        {canWrite ? <Button onClick={() => openForm("new")}>Nuova tipologia</Button> : null}
       </div>
 
       {filtered.length === 0 ? (
@@ -82,7 +88,7 @@ export function TypeList({
                 </Link>
                 {canWrite ? (
                   <>
-                    <Button variant="outline" size="sm" onClick={() => setEditing(type)}>
+                    <Button variant="outline" size="sm" onClick={() => openForm(type)}>
                       Modifica
                     </Button>
                     <Button
@@ -119,13 +125,23 @@ export function TypeList({
       )}
 
       <Dialog
-        open={editing !== null}
-        onOpenChange={(open) => !open && setEditing(null)}
+        open={formOpen}
+        onOpenChange={setFormOpen}
         title={editing && editing !== "new" ? `Modifica ${editing.name}` : "Nuova tipologia"}
-        className="w-[min(720px,calc(100vw-1.5rem))]"
+        description={
+          editing && editing !== "new"
+            ? "Le modifiche valgono per le nuove prenotazioni. Lo storico resta invariato."
+            : "Nome, capienza e prezzo di riferimento. Le tariffe di vendita restano sui rate plan."
+        }
+        flush
+        className="w-[min(680px,calc(100vw-1.5rem))]"
       >
         {editing ? (
-          <RoomTypeForm type={editing === "new" ? undefined : editing} onDone={() => setEditing(null)} />
+          <RoomTypeForm
+            key={editing === "new" ? "new" : editing.id}
+            type={editing === "new" ? undefined : editing}
+            onDone={() => setFormOpen(false)}
+          />
         ) : null}
       </Dialog>
 

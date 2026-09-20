@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 
 import { PageHero } from "@/components/hero/PageHero";
 import { PageShell } from "@/components/layout/PageShell";
 import { RoomDetail } from "@/components/rooms/RoomDetail";
 import { AvailabilityBar } from "@/components/sections/AvailabilityBar";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { hotel } from "@/lib/content";
-import { getRoom, roomLine, rooms } from "@/lib/rooms";
+import { getRoom, roomAmenities, roomLine, rooms } from "@/lib/rooms";
+import { absUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/site";
 import { seasonMedia } from "@/lib/seasons";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -18,26 +18,16 @@ export function generateStaticParams() {
 
 export const dynamicParams = false;
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const room = getRoom(slug);
   if (!room) return { title: "Camera" };
 
-  const cover = room.image.seasonal
-    ? seasonMedia(room.image.seasonal)
-    : room.image;
-
-  return {
+  return pageMetadata({
     title: room.name,
     description: room.lede,
-    alternates: { canonical: `/camere/${room.slug}` },
-    openGraph: {
-      title: `${room.name} — Locanda Grauson`,
-      description: room.lede,
-      url: `/camere/${room.slug}`,
-      images: [{ url: cover.src, alt: cover.alt }],
-    },
-  };
+    path: `/camere/${room.slug}`,
+  });
 }
 
 export default async function RoomPage({ params }: Props) {
@@ -45,11 +35,15 @@ export default async function RoomPage({ params }: Props) {
   const room = getRoom(slug);
   if (!room) notFound();
 
+  const cover = room.image.seasonal ? seasonMedia(room.image.seasonal) : room.image;
+
   const roomSchema = {
     "@context": "https://schema.org",
     "@type": "HotelRoom",
     name: room.name,
     description: room.lede,
+    url: absUrl(`/camere/${room.slug}`),
+    image: absUrl(cover.src),
     occupancy: {
       "@type": "QuantitativeValue",
       maxValue: room.guests + (room.children ?? 0),
@@ -64,25 +58,25 @@ export default async function RoomPage({ params }: Props) {
           },
         }
       : {}),
-    containedInPlace: {
-      "@type": "Hotel",
-      name: hotel.name,
-      address: {
-        "@type": "PostalAddress",
-        streetAddress: hotel.address.street,
-        addressLocality: hotel.address.city,
-        postalCode: hotel.address.postalCode,
-        addressCountry: hotel.address.country,
-      },
-    },
+    amenityFeature: roomAmenities.map((name) => ({
+      "@type": "LocationFeatureSpecification",
+      name,
+      value: true,
+    })),
+    petsAllowed: false,
+    containedInPlace: { "@id": absUrl("/#hotel") },
   };
 
   return (
     <PageShell>
-      <Script
-        id={`room-schema-${room.slug}`}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(roomSchema) }}
+      <JsonLd id={`room-schema-${room.slug}`} data={roomSchema} />
+      <JsonLd
+        id={`room-breadcrumb-${room.slug}`}
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Camere", path: "/camere" },
+          { name: room.name, path: `/camere/${room.slug}` },
+        ])}
       />
 
       <PageHero

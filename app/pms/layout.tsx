@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { PmsRootLayout } from "@pms-core/app/layout";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "PMS",
   robots: { index: false, follow: false },

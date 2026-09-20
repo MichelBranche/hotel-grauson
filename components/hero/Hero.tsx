@@ -75,8 +75,8 @@ export function Hero() {
             <SeasonalImage
               slot="hero"
               priority
-              sizes="(max-width: 767px) 180vh, 100vw"
-              quality={95}
+              sizes="(max-width: 767px) 150vw, 100vw"
+              quality={88}
               className="object-cover object-[42%_center] sm:object-[42%_center]"
             />
           </div>

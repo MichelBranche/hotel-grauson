@@ -104,6 +104,7 @@ export function ImageReveal({
               fill
               sizes={sizes}
               priority={priority}
+              quality={75}
               className="object-cover"
             />
           )}

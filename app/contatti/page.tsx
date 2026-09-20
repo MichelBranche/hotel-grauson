@@ -1,70 +1,47 @@
-import type { Metadata } from "next";
-import Script from "next/script";
-
 import { ContactArrive } from "@/components/contact/ContactArrive";
 import { ContactMap } from "@/components/contact/ContactMap";
 import { ContactRecapiti } from "@/components/contact/ContactRecapiti";
 import { ContactWrite } from "@/components/contact/ContactWrite";
 import { PageHero } from "@/components/hero/PageHero";
 import { PageShell } from "@/components/layout/PageShell";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { contactGooglePlace } from "@/lib/contact";
 import { hotel } from "@/lib/content";
-import { seasonMedia } from "@/lib/seasons";
+import { absUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/site";
 
 const description =
   "Telefono, posta e carta della Locanda Grauson a Gimillan di Cogne. Come arrivare da Aosta.";
 
-const facciata = seasonMedia("facciata");
-
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Contatti",
   description,
-  alternates: { canonical: "/contatti" },
-  openGraph: {
-    title: "Contatti — Locanda Grauson",
-    description,
-    url: "/contatti",
-    images: [
-      {
-        url: facciata.src,
-        alt: facciata.alt,
-      },
-    ],
-  },
-};
+  path: "/contatti",
+});
 
 const contactSchema = {
   "@context": "https://schema.org",
   "@type": "ContactPage",
   name: `Contatti — ${hotel.name}`,
   description,
-  url: "https://www.locandagrauson.it/contatti",
+  url: absUrl("/contatti"),
   mainEntity: {
-    "@type": "Hotel",
-    name: hotel.name,
+    "@id": absUrl("/#hotel"),
     telephone: hotel.phone,
     email: hotel.email,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: hotel.address.street,
-      addressLocality: hotel.address.city,
-      postalCode: hotel.address.postalCode,
-      addressCountry: hotel.address.country,
-    },
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: hotel.geo.lat,
-      longitude: hotel.geo.lng,
-    },
+    hasMap: contactGooglePlace,
   },
 };
 
 export default function ContattiPage() {
   return (
     <PageShell>
-      <Script
-        id="contatti-schema"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(contactSchema) }}
+      <JsonLd id="contatti-schema" data={contactSchema} />
+      <JsonLd
+        id="contatti-breadcrumb"
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Contatti", path: "/contatti" },
+        ])}
       />
 
       <PageHero

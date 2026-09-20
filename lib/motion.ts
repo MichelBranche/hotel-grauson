@@ -15,7 +15,12 @@ export const EASE_SOFT = "power2.out";
 
 export function reducedMotion() {
   if (typeof window === "undefined") return true;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return true;
+  const connection = (navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string };
+  }).connection;
+  if (connection?.saveData) return true;
+  return connection?.effectiveType === "slow-2g" || connection?.effectiveType === "2g";
 }
 
 export { gsap, ScrollTrigger, useGSAP };

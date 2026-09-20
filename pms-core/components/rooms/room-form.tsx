@@ -47,13 +47,19 @@ export function RoomForm({
     <form
       className="grid max-h-[70vh] gap-3 overflow-y-auto pms-scroll pr-1"
       onSubmit={form.handleSubmit(async (values) => {
+        const customBasePrice =
+          typeof values.customBasePrice === "number" && Number.isFinite(values.customBasePrice)
+            ? values.customBasePrice
+            : null;
         const payload = {
           ...values,
           name: values.name || null,
           floorId: values.floorId || null,
-          customBasePrice: values.customBasePrice || null,
+          customBasePrice,
         };
-        const result = room ? await updateRoomAction(room.id, payload) : await createRoomAction(roomInputSchema.parse(payload));
+        const result = room
+          ? await updateRoomAction(room.id, payload)
+          : await createRoomAction(roomInputSchema.parse(payload));
         if (!result.ok) {
           toast.error(result.error);
           return;

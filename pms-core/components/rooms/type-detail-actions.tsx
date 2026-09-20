@@ -41,7 +41,14 @@ export function TypeDetailActions({ type }: { type: StructureType }) {
           Elimina
         </Button>
       </div>
-      <Dialog open={editOpen} onOpenChange={setEditOpen} title={`Modifica ${type.name}`} className="w-[min(720px,calc(100vw-1.5rem))]">
+      <Dialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        title={`Modifica ${type.name}`}
+        description="Le modifiche valgono per le nuove prenotazioni. Lo storico resta invariato."
+        flush
+        className="w-[min(680px,calc(100vw-1.5rem))]"
+      >
         <RoomTypeForm type={type} onDone={() => setEditOpen(false)} />
       </Dialog>
       <ConfirmDialog

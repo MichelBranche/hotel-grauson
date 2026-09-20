@@ -26,12 +26,13 @@ export function PageHero({ eyebrow, title, lede, note, media, detail }: PageHero
 
       const q = gsap.utils.selector(scope);
       const tl = gsap.timeline({ delay: 0.1, defaults: { ease: EASE } });
+      const desktop = window.matchMedia("(min-width: 768px)").matches;
 
       tl.to(q("[data-hero-frame]"), {
         clipPath: "inset(0% 0% 0% 0% round 34px)",
         duration: 1.5,
       })
-        .to(q("[data-hero-media]"), { scale: 1, duration: 2.2 }, 0)
+        .to(q("[data-hero-media]"), { scale: 1, duration: desktop ? 2.2 : 0 }, 0)
         .to(q("[data-hero-el='eyebrow']"), { opacity: 1, y: 0, duration: 0.95 }, 0.5)
         .to(q("[data-hero-line] > span"), { y: 0, duration: 1.25, stagger: 0.12 }, 0.62);
 
@@ -42,16 +43,18 @@ export function PageHero({ eyebrow, title, lede, note, media, detail }: PageHero
       if (note.length) tl.to(note, { opacity: 1, y: 0, duration: 1.2 }, 1.1);
       if (detail.length) tl.to(detail, { opacity: 1, y: 0, duration: 1 }, 1.25);
 
-      gsap.to(q("[data-hero-media]"), {
-        yPercent: 6,
-        ease: "none",
-        scrollTrigger: {
-          trigger: scope.current,
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      if (desktop) {
+        gsap.to(q("[data-hero-media]"), {
+          yPercent: 6,
+          ease: "none",
+          scrollTrigger: {
+            trigger: scope.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
     },
     { scope },
   );
@@ -63,12 +66,12 @@ export function PageHero({ eyebrow, title, lede, note, media, detail }: PageHero
           data-hero-frame
           className="relative isolate h-[min(78svh,38rem)] overflow-hidden rounded-[var(--radius-hero)] bg-alpine sm:h-[min(76svh,42rem)]"
         >
-          <div data-hero-media className="absolute inset-0 will-change-transform">
+          <div data-hero-media className="absolute inset-0">
             {media.seasonal ? (
               <SeasonalImage
                 slot={media.seasonal}
                 priority
-                sizes="100vw"
+                sizes="(max-width: 767px) 150vw, 100vw"
                 quality={88}
                 className="object-cover object-[center_42%]"
               />
@@ -78,7 +81,7 @@ export function PageHero({ eyebrow, title, lede, note, media, detail }: PageHero
                 alt={media.alt}
                 fill
                 priority
-                sizes="100vw"
+                sizes="(max-width: 767px) 150vw, 100vw"
                 quality={88}
                 className="object-cover object-[center_36%]"
               />

@@ -1,31 +1,20 @@
-import type { Metadata } from "next";
-
 import { BookingFlow } from "@/components/booking/BookingFlow";
 import { PageHero } from "@/components/hero/PageHero";
 import { PageShell } from "@/components/layout/PageShell";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { hotel } from "@/lib/content";
+import { absUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/site";
 import { publicAvailabilityAction } from "@pms-core/actions/booking";
 import type { AvailabilityOffer } from "@pms-core/types";
 
 const description =
   "Prenota una camera alla Locanda Grauson, Gimillan di Cogne. Date, tipologia e recapiti. Conferma della reception.";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Prenota",
   description,
-  alternates: { canonical: "/booking" },
-  openGraph: {
-    title: "Prenota — Locanda Grauson",
-    description,
-    url: "/booking",
-    images: [
-      {
-        url: "/images/camera-locanda.jpg",
-        alt: "Camera in legno della Locanda Grauson, con copriletto a fiori e l'abbaino sul bosco",
-      },
-    ],
-  },
-};
+  path: "/booking",
+});
 
 export default async function BookingPage({
   searchParams,
@@ -46,6 +35,27 @@ export default async function BookingPage({
 
   return (
     <PageShell>
+      <JsonLd
+        id="booking-schema"
+        data={{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Prenota — Locanda Grauson",
+          url: absUrl("/booking"),
+          about: { "@id": absUrl("/#hotel") },
+          potentialAction: {
+            "@type": "ReserveAction",
+            target: absUrl("/booking"),
+          },
+        }}
+      />
+      <JsonLd
+        id="booking-breadcrumb"
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Prenota", path: "/booking" },
+        ])}
+      />
       <PageHero
         eyebrow={`Soggiorno · ${hotel.hamlet}`}
         title={["Una camera", "a Gimillan"]}
