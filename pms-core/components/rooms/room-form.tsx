@@ -51,7 +51,10 @@ export function RoomForm({
           ...values,
           name: values.name || null,
           floorId: values.floorId || null,
-          customBasePrice: values.customBasePrice || null,
+          customBasePrice:
+            typeof values.customBasePrice === "number" && Number.isFinite(values.customBasePrice)
+              ? values.customBasePrice
+              : null,
         };
         const result = room ? await updateRoomAction(room.id, payload) : await createRoomAction(roomInputSchema.parse(payload));
         if (!result.ok) {
