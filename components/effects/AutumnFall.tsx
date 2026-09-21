@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 
-import { getLenis } from "@/lib/lenis";
 import { reducedMotion } from "@/lib/motion";
 
 import "./AutumnFall.css";
@@ -77,73 +76,20 @@ const STRAY_LEAVES: LeafStyle[] = Array.from({ length: STRAY_COUNT }, (_, i) => 
 
 const FAN = Array.from({ length: 7 }, (_, petal) => <div key={petal} className="leave" />);
 
-/** Idle until the visitor scrolls down for the first time. */
-function useFirstScrollDown() {
-  const [started, setStarted] = useState(false);
+/** Fall as soon as autumn is on, even while the hero is still at rest. */
+function useAutumnFall() {
+  const [falling, setFalling] = useState(false);
 
   useEffect(() => {
     if (reducedMotion()) return;
-
-    if (window.scrollY > 12) {
-      setStarted(true);
-      return;
-    }
-
-    let lastY = window.scrollY;
-    let done = false;
-
-    const start = () => {
-      if (done) return;
-      done = true;
-      setStarted(true);
-      stop();
-    };
-
-    const onWheel = (event: WheelEvent) => {
-      if (event.deltaY > 2) start();
-    };
-
-    const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY + 2) start();
-      lastY = y;
-    };
-
-    const onLenis = (event: { direction: number; scroll: number }) => {
-      if (event.direction === 1 || event.scroll > 12) start();
-    };
-
-    let touchY = 0;
-    const onTouchStart = (event: TouchEvent) => {
-      touchY = event.touches[0]?.clientY ?? 0;
-    };
-    const onTouchMove = (event: TouchEvent) => {
-      const y = event.touches[0]?.clientY ?? touchY;
-      if (touchY - y > 8) start();
-    };
-
-    const stop = () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      getLenis()?.off("scroll", onLenis);
-    };
-
-    window.addEventListener("wheel", onWheel, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    getLenis()?.on("scroll", onLenis);
-
-    return stop;
+    setFalling(true);
   }, []);
 
-  return started;
+  return falling;
 }
 
 function Maples({ layer, leaves }: { layer: "clipped" | "loose"; leaves: LeafStyle[] }) {
-  const falling = useFirstScrollDown();
+  const falling = useAutumnFall();
   const layerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
