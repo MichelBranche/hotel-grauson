@@ -1,3 +1,8 @@
+
+
+![Hero Section](preview.png)
+
+
 Public website for Locanda Grauson plus an extractable PMS in `/pms-core`.
 
 - Site: `/`, `/camere`, `/ristorante`, `/cogne`
