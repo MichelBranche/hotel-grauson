@@ -1,15 +1,16 @@
 import { PageShell } from "@/components/layout/PageShell";
-import { RestaurantHearth } from "@/components/restaurant/RestaurantHearth";
+import { RestaurantEditorial } from "@/components/restaurant/RestaurantEditorial";
+import { RestaurantExperience } from "@/components/restaurant/RestaurantExperience";
+import { RestaurantFeatures } from "@/components/restaurant/RestaurantFeatures";
 import { RestaurantHero } from "@/components/restaurant/RestaurantHero";
 import { RestaurantMenu } from "@/components/restaurant/RestaurantMenu";
-import { RestaurantPin } from "@/components/restaurant/RestaurantPin";
-import { RestaurantReserve } from "@/components/restaurant/RestaurantReserve";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { hotel } from "@/lib/content";
+import { dishes } from "@/lib/restaurant";
 import { absUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/site";
 
 const description =
-  "Ristorante della Locanda Grauson a Gimillan: cucina cogneintse, colazione con prodotti della valle e torte di produzione propria. Prenotazione telefonica per pranzo e cena.";
+  "Il ristorante della Locanda Grauson a Gimillan di Cogne. Cucina valdostana, ingredienti locali e sapori della tradizione nel cuore della Valle d'Aosta.";
 
 export const metadata = pageMetadata({
   title: "Ristorante",
@@ -29,6 +30,18 @@ const restaurantSchema = {
   telephone: hotel.phone,
   email: hotel.email,
   acceptsReservations: true,
+  hasMenu: {
+    "@type": "Menu",
+    name: "Preparazioni della casa",
+    description: "Menù del giorno, comunicato in sala. Non è prevista una carta fissa.",
+    hasMenuItem: dishes
+      .filter((dish) => dish.active)
+      .map((dish) => ({
+        "@type": "MenuItem",
+        name: dish.name,
+        description: dish.description,
+      })),
+  },
   address: {
     "@type": "PostalAddress",
     streetAddress: hotel.address.street,
@@ -52,10 +65,10 @@ export default function RistorantePage() {
       />
 
       <RestaurantHero />
-      <RestaurantPin />
-      <RestaurantHearth />
+      <RestaurantFeatures />
+      <RestaurantEditorial />
       <RestaurantMenu />
-      <RestaurantReserve />
+      <RestaurantExperience />
     </PageShell>
   );
 }

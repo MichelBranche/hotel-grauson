@@ -1,16 +1,13 @@
 import { PageHero } from "@/components/hero/PageHero";
 import { PageShell } from "@/components/layout/PageShell";
-import { RoomBalconyChapter } from "@/components/rooms/RoomBalconyChapter";
-import { RoomHouseChapter } from "@/components/rooms/RoomHouseChapter";
-import { RoomIndexList } from "@/components/rooms/RoomIndexList";
-import { AvailabilityBar } from "@/components/sections/AvailabilityBar";
+import { RoomCatalog } from "@/components/rooms/RoomCatalog";
+import { RoomsClose } from "@/components/rooms/RoomsClose";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { hotel } from "@/lib/content";
 import { rooms } from "@/lib/rooms";
 import { absUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/site";
 
 const description =
-  "Camere alla Locanda Grauson, Gimillan di Cogne: singola, economy, matrimoniale, con balcone, tripla, doppia economy, standard. Bagno privato, Wi-Fi. Non si accettano animali.";
+  "Camere della Locanda Grauson a Gimillan di Cogne, nel cuore della Valle d'Aosta. Ospitalità autentica, comfort alpino e vista sulle montagne.";
 
 export const metadata = pageMetadata({
   title: "Camere",
@@ -43,20 +40,18 @@ export default function CamerePage() {
       />
 
       <PageHero
-        eyebrow={`Camere · ${hotel.hamlet}`}
-        title={["Le camere"]}
-        lede="Sette tipologie, da 9 a 42 m². Bagno privato, Wi-Fi. Animali non ammessi."
-        note={"Bagno privato"}
+        eyebrow="Camere"
+        title={["Camere"]}
+        lede="Sette ambienti, un'unica atmosfera. Natura, comfort e autenticità."
+        note={"Svegliarsi\ncon la montagna."}
         media={{
           src: "/images/camera-famiglia.jpg",
-          alt: "Camera della Locanda Grauson, con il letto a fiori, il tavolino e la luce del legno",
+          alt: "Camera in legno della Locanda Grauson, con il letto a fiori, il tavolino e la luce del legno",
         }}
       />
 
-      <RoomIndexList />
-      <RoomBalconyChapter />
-      <RoomHouseChapter />
-      <AvailabilityBar layout="inline" />
+      <RoomCatalog />
+      <RoomsClose />
     </PageShell>
   );
 }

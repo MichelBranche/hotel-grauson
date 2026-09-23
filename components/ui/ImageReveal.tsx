@@ -18,8 +18,8 @@ type ImageRevealProps = {
   parallax?: number;
   children?: React.ReactNode;
 } & (
-  | { src: string; alt: string; seasonal?: never; effect?: EffectSlot }
-  | { seasonal: SeasonSlot; src?: never; alt?: never; effect?: never }
+  | { src: string; alt: string; desktopSrc?: string; seasonal?: never; effect?: EffectSlot }
+  | { seasonal: SeasonSlot; src?: never; alt?: never; desktopSrc?: never; effect?: never }
 );
 
 /**
@@ -29,6 +29,7 @@ type ImageRevealProps = {
 export function ImageReveal({
   src,
   alt,
+  desktopSrc,
   seasonal,
   effect,
   sizes,
@@ -98,15 +99,18 @@ export function ImageReveal({
               className="object-cover"
             />
           ) : (
-            <Image
-              src={src as string}
-              alt={alt as string}
-              fill
-              sizes={sizes}
-              priority={priority}
-              quality={75}
-              className="object-cover"
-            />
+            <picture>
+              {desktopSrc ? <source media="(min-width: 1024px)" srcSet={desktopSrc} /> : null}
+              <Image
+                src={src as string}
+                alt={alt as string}
+                fill
+                sizes={sizes}
+                priority={priority}
+                quality={75}
+                className="object-cover"
+              />
+            </picture>
           )}
         </div>
       </div>

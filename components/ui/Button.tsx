@@ -70,11 +70,22 @@ export function Button({
 }
 
 /** Circular arrow affordance used on the feature cards. */
-export function ArrowCircle({ className = "" }: { className?: string }) {
+export function ArrowCircle({
+  className = "",
+  tone = "light",
+}: {
+  className?: string;
+  tone?: "light" | "alpine";
+}) {
+  const skin =
+    tone === "alpine"
+      ? "bg-alpine text-surface group-hover:bg-accent-hover"
+      : "bg-surface/95 text-ink group-hover:bg-white";
+
   return (
     <span
       aria-hidden
-      className={`grid size-[2.375rem] shrink-0 place-items-center rounded-full bg-surface/95 text-ink transition-colors duration-500 [transition-timing-function:var(--ease-out)] group-hover:bg-white ${className}`}
+      className={`grid size-[2.375rem] shrink-0 place-items-center rounded-full transition-colors duration-500 [transition-timing-function:var(--ease-out)] ${skin} ${className}`}
     >
       <ArrowRight className="arrow-slide size-4" strokeWidth={1.6} />
     </span>

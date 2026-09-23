@@ -1,43 +1,81 @@
-export const kitchenSlides = [
-  {
-    index: "01",
-    eyebrow: "La sala",
-    title: "Ristorante interno alla locanda",
-    body: "Sala da pranzo in struttura. Colazione, pranzo e cena si servono in sala, su prenotazione per i pasti principali.",
-  },
-  {
-    index: "02",
-    eyebrow: "La cucina",
-    title: "Cucina cogneintse",
-    body: "Piatti della tradizione di Cogne: polenta, fontina, carbonade e altri preparati in base a stagione e disponibilità.",
-  },
-  {
-    index: "03",
-    eyebrow: "Il menù",
-    title: "Menù del giorno",
-    body: "Non è prevista una carta fissa. Colazione al mattino, con torte di produzione propria. A pranzo e a cena il menù si comunica in sala.",
-  },
+export type DishCategory = "antipasti" | "primi" | "secondi" | "dolci";
+
+export const dishCategories = [
+  { id: "tutti", label: "Tutti" },
+  { id: "antipasti", label: "Antipasti" },
+  { id: "primi", label: "Primi" },
+  { id: "secondi", label: "Secondi" },
+  { id: "dolci", label: "Dolci" },
 ] as const;
 
-export const kitchenDishes = [
+export type DishFilter = (typeof dishCategories)[number]["id"];
+
+/**
+ * House preparations, not a fixed priced carta.
+ * Lunch and dinner follow the day's menu, told in the dining room.
+ */
+export type Dish = {
+  slug: string;
+  name: string;
+  category: DishCategory;
+  description: string;
+  image: { src: string; alt: string };
+  price?: string;
+  allergens?: string;
+  seasonal?: boolean;
+  active: boolean;
+};
+
+export const dishes: Dish[] = [
   {
-    index: "01",
+    slug: "polenta",
     name: "Polenta",
-    line: "Preparazione tradizionale di valle, servita con formaggio o spezzatino secondo disponibilità.",
+    category: "primi",
+    description: "Preparazione tradizionale di valle, con formaggio o spezzatino secondo disponibilità.",
+    image: {
+      src: "/images/piatto-polenta.jpg",
+      alt: "Polenta con fontina e lardo, servita in un piatto di coccio",
+    },
+    seasonal: true,
+    active: true,
   },
   {
-    index: "02",
-    name: "Fontina e latte",
-    line: "Formaggi locali e piatti a base di latte, tra cui la seupa, in base alla stagione.",
+    slug: "seupa",
+    name: "Seupa",
+    category: "primi",
+    description: "Pane, fontina e brodo, quando è in menù.",
+    image: {
+      src: "/images/piatto-seupa.jpg",
+      alt: "Seupa in coccio, con pane, fontina fusa e le cime fuori dalla finestra",
+    },
+    seasonal: true,
+    active: true,
   },
   {
-    index: "03",
+    slug: "carbonade",
     name: "Carbonade",
-    line: "Spezzatino di tradizione, quando è in menù.",
+    category: "secondi",
+    description: "Spezzatino di tradizione, quando è in menù.",
+    image: {
+      src: "/images/piatto-carbonade.jpg",
+      alt: "Carbonade di manzo con polenta, servita in un piatto di coccio",
+    },
+    seasonal: true,
+    active: true,
   },
   {
-    index: "04",
-    name: "Torte di produzione propria",
-    line: "Disponibili a colazione e, quando preparate, durante la giornata.",
+    slug: "torte",
+    name: "Torte di casa",
+    category: "dolci",
+    description: "Di produzione propria, a colazione e quando preparate in giornata.",
+    image: {
+      src: "/images/piatto-torte.jpg",
+      alt: "Torta di mele della casa, tagliata su un tagliere di legno",
+    },
+    seasonal: true,
+    active: true,
   },
-] as const;
+];
+
+export const menuNote =
+  "Non c'è una carta fissa. Queste sono le preparazioni della casa: il menù del giorno si comunica in sala.";
