@@ -31,7 +31,11 @@ export function BookingSummary({
   labelledBy?: string;
 }) {
   return (
-    <dl aria-labelledby={labelledBy} className={`${bookingPanelClass} grid gap-5 sm:grid-cols-2`}>
+    <dl
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : "Riepilogo del soggiorno"}
+      className={`${bookingPanelClass} grid gap-5 sm:grid-cols-2`}
+    >
       <Row label="Check-in" value={dayLabel(checkIn)} />
       <Row label="Check-out" value={dayLabel(checkOut)} />
       <Row label="Notti" value={nightLabel(checkIn, checkOut)} />

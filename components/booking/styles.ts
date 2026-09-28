@@ -11,3 +11,6 @@ export const bookingInputIdle = "border-[rgb(37_39_33_/_0.08)] focus:border-alpi
 export const bookingInputInvalid = "border-[#8a3b3b] focus:border-[#8a3b3b]";
 
 export const bookingErrorClass = "mt-1.5 text-[0.8125rem] leading-snug text-[#8a3b3b]";
+
+export const bookingQuietButtonClass =
+  "inline-flex h-12 w-full items-center justify-center rounded-full border border-[rgb(37_39_33_/_0.12)] px-6 text-[0.8125rem] font-medium text-ink transition-colors duration-500 [transition-timing-function:var(--ease-out)] hover:border-[rgb(37_39_33_/_0.3)] hover:bg-[rgb(37_39_33_/_0.03)] sm:w-auto";

@@ -1,4 +1,6 @@
 import { BookingFlow } from "@/components/booking/BookingFlow";
+import { validateStayDates } from "@/components/booking/dates";
+import { ADULT_LIMITS, CHILD_LIMITS } from "@/components/booking/types";
 import { PageHero } from "@/components/hero/PageHero";
 import { PageShell } from "@/components/layout/PageShell";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -19,18 +21,38 @@ export const metadata = pageMetadata({
 export default async function BookingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkIn?: string; checkOut?: string; adults?: string; guests?: string }>;
+  searchParams: Promise<{
+    checkIn?: string;
+    checkOut?: string;
+    adults?: string;
+    guests?: string;
+    children?: string;
+  }>;
 }) {
   const params = await searchParams;
   const checkIn = params.checkIn ?? "";
   const checkOut = params.checkOut ?? "";
-  const adults = Number(params.adults ?? params.guests ?? 2);
-  const guests = Number.isFinite(adults) && adults > 0 ? Math.min(adults, 6) : 2;
+  const adultsRaw = Number(params.adults ?? params.guests ?? 2);
+  const guests =
+    Number.isFinite(adultsRaw) && adultsRaw > 0
+      ? Math.min(ADULT_LIMITS.max, Math.max(ADULT_LIMITS.min, Math.trunc(adultsRaw)))
+      : 2;
+  const childrenRaw = Number(params.children ?? 0);
+  const children = Number.isFinite(childrenRaw)
+    ? Math.min(CHILD_LIMITS.max, Math.max(CHILD_LIMITS.min, Math.trunc(childrenRaw)))
+    : 0;
 
+  // La pagina resta un Server Component: se l'indirizzo ha già date valide,
+  // chiede le camere al PMS prima che il browser disegni il modulo.
+  // I controlli sulle date sono gli stessi del campo check-in.
+  const dates = { checkIn, checkOut };
+  const datesValid = validateStayDates(dates) === null;
   let initialOffers: AvailabilityOffer[] = [];
-  if (checkIn.length >= 10 && checkOut.length >= 10) {
-    const result = await publicAvailabilityAction({ checkIn, checkOut, adults: guests });
+  let initialError: string | null = null;
+  if (datesValid) {
+    const result = await publicAvailabilityAction({ checkIn, checkOut, adults: guests, children });
     if (result.ok) initialOffers = result.data;
+    else initialError = result.error;
   }
 
   return (
@@ -73,7 +95,11 @@ export default async function BookingPage({
           checkIn={checkIn}
           checkOut={checkOut}
           adults={guests}
+          childCount={children}
           initialOffers={initialOffers}
+          initialSearched={datesValid}
+          initialError={initialError}
+          initialDateAttempted={!datesValid && (checkIn.length > 0 || checkOut.length > 0)}
         />
       </section>
     </PageShell>

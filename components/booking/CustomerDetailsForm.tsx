@@ -3,7 +3,15 @@
 import { useId, useState, type FormEvent } from "react";
 
 import { customerErrors, firstCustomerError, NOTES_MAX, type CustomerField } from "@/components/booking/customer";
-import { bookingErrorClass, bookingInputClass, bookingInputIdle, bookingInputInvalid } from "@/components/booking/styles";
+import {
+  bookingErrorClass,
+  bookingInputClass,
+  bookingInputIdle,
+  bookingInputInvalid,
+  bookingQuietButtonClass,
+} from "@/components/booking/styles";
+import { Button } from "@/components/ui/Button";
+import { MagneticButton } from "@/components/ui/MagneticButton";
 import type { CustomerDetails } from "@/components/booking/types";
 
 /**
@@ -156,23 +164,17 @@ export function CustomerDetailsForm({
 
       <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex h-12 items-center justify-center rounded-full border border-[rgb(37_39_33_/_0.12)] px-6 text-[0.8125rem] font-medium text-ink transition-colors duration-500 hover:border-[rgb(37_39_33_/_0.3)] hover:bg-[rgb(37_39_33_/_0.03)]"
-          >
+          <button type="button" onClick={onBack} className={bookingQuietButtonClass}>
             Indietro
           </button>
         ) : (
           <span />
         )}
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-7 text-[0.8125rem] font-medium text-surface transition-colors duration-500 hover:bg-accent-hover disabled:opacity-60"
-        >
-          {pending ? "Invio…" : "Invia la richiesta"}
-        </button>
+        <MagneticButton className="w-full sm:w-auto">
+          <Button type="submit" size="lg" disabled={pending} className="w-full disabled:opacity-60 sm:w-auto">
+            {pending ? "Invio…" : "Invia la richiesta"}
+          </Button>
+        </MagneticButton>
       </div>
     </form>
   );
