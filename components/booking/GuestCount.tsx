@@ -43,7 +43,7 @@ export function GuestCount({
   return (
     <fieldset className="min-w-0" aria-describedby={error ? errorId : undefined}>
       <legend className="sr-only">Numero di ospiti</legend>
-      <div className="divide-y divide-[rgb(37_39_33_/_0.08)]">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Counter
           label="Adulti"
           hint="Almeno una persona adulta"
@@ -96,14 +96,12 @@ function Counter({
   const labelId = useId();
 
   return (
-    <div className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-      <div>
-        <p id={labelId} className="text-[0.9375rem] text-ink">
-          {label}
-        </p>
-        <p className="mt-1 text-[0.75rem] text-muted">{hint}</p>
-      </div>
-      <div className="flex items-center gap-2" role="group" aria-labelledby={labelId}>
+    <div className="flex flex-col items-center rounded-[var(--radius-soft)] bg-paper px-4 py-6 text-center">
+      <p id={labelId} className="text-[0.9375rem] text-ink">
+        {label}
+      </p>
+      <p className="mt-1 text-[0.75rem] text-muted">{hint}</p>
+      <div className="mt-5 flex items-center gap-3" role="group" aria-labelledby={labelId}>
         <button
           type="button"
           className="grid size-12 place-items-center rounded-full border border-[rgb(37_39_33_/_0.12)] text-ink transition-colors duration-300 hover:border-[rgb(37_39_33_/_0.3)] disabled:cursor-not-allowed disabled:opacity-35"
@@ -113,7 +111,7 @@ function Counter({
         >
           <Minus className="size-4" strokeWidth={1.6} aria-hidden />
         </button>
-        <span className="w-8 text-center text-base font-medium tabular-nums" aria-hidden>
+        <span className="w-10 text-center text-[1.65rem] leading-none font-medium tabular-nums" aria-hidden>
           {value}
         </span>
         <span className="sr-only" aria-live="polite">

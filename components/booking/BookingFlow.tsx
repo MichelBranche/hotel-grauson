@@ -1,15 +1,16 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { AvailableRooms } from "@/components/booking/AvailableRooms";
 import { BookingSummary } from "@/components/booking/BookingSummary";
-import { guestLabel, nightLabel } from "@/components/booking/copy";
+import { guestLabel } from "@/components/booking/copy";
 import { CustomerDetailsForm } from "@/components/booking/CustomerDetailsForm";
 import { validateStayDates } from "@/components/booking/dates";
 import { DateSelection } from "@/components/booking/DateSelection";
 import { GuestCount, validateGuestCounts } from "@/components/booking/GuestCount";
-import { bookingErrorClass, bookingPanelClass, bookingQuietButtonClass } from "@/components/booking/styles";
+import { bookingErrorClass, bookingQuietButtonClass } from "@/components/booking/styles";
 import { emptyCustomer, type CustomerDetails, type GuestCounts, type StayDates } from "@/components/booking/types";
 import { Button } from "@/components/ui/Button";
 import { MagneticButton } from "@/components/ui/MagneticButton";
@@ -281,18 +282,23 @@ export function BookingFlow({
 
   if (code !== null) {
     return (
-      <div className="mx-auto w-full max-w-5xl">
-        <section className="px-1 py-2">
+      <div className={bookingDeskClass}>
+        <section className="mx-auto max-w-3xl px-5 py-10 text-center sm:px-10 sm:py-14">
           <p className="eyebrow text-muted">Richiesta inviata</p>
-          <h2 id="cerca-title" className="display-lg mt-4 max-w-[16ch]">
+          <h2 id="cerca-title" className="display-lg mx-auto mt-4 max-w-[16ch]">
             Vi aspettiamo a Gimillan
           </h2>
-          <p className="lede mt-5 max-w-[40ch]">
+          <p className="lede mx-auto mt-5 max-w-[40ch]">
             {code ? `Codice ${code}. ` : ""}
             Vi confermiamo a {customer.email || "questa email"}. Dal {formatLong(checkIn)} al {formatLong(checkOut)}.{" "}
             {guestLabel(adults, childCount)}.
           </p>
-          <div className="mt-8">
+          {code ? (
+            <p className="mx-auto mt-6 inline-flex rounded-full bg-alpine px-5 py-2 text-[0.9375rem] font-medium text-surface">
+              {code}
+            </p>
+          ) : null}
+          <div className="mt-8 text-left">
             <BookingSummary
               checkIn={checkIn}
               checkOut={checkOut}
@@ -330,28 +336,43 @@ export function BookingFlow({
   const roomError = roomAttempted && (!selected || !rate) ? "Scegliete una tariffa per continuare." : null;
 
   return (
-    <div id="disponibilita" className="mx-auto w-full max-w-5xl scroll-mt-28">
+    <div id="disponibilita" className={`${bookingDeskClass} scroll-mt-28`}>
       <BookingProgress step={step} furthest={furthest} onGo={goTo} />
 
-      <div className="mt-8">
+      <header className="border-b border-[rgb(37_39_33_/_0.08)] px-5 py-8 text-center sm:px-10">
         <p className="eyebrow text-muted">{copy.eyebrow}</p>
-        <h2 id="cerca-title" ref={headingRef} tabIndex={-1} className="display-md mt-2 scroll-mt-28 outline-none">
+        <h2
+          id="cerca-title"
+          ref={headingRef}
+          tabIndex={-1}
+          className="display-md mx-auto mt-3 max-w-[18ch] scroll-mt-28 outline-none"
+        >
           {copy.title}
         </h2>
-        <p className="lede mt-3 max-w-[46ch]">{copy.lede}</p>
+        <p className="lede mx-auto mt-3 max-w-[46ch]">{copy.lede}</p>
+      </header>
 
-        <div className="mt-6">
+      {/*
+        Il banco è centrato nella pagina. A sinistra il passo corrente,
+        a destra il soggiorno che si riempie con gli stessi dati.
+        Su telefono il riepilogo sale sopra il passo, tranne alle date,
+        dove sarebbe ancora vuoto.
+      */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:items-start">
+        <div
+          className={`order-2 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 ${
+            step === "riepilogo" ? "mx-auto max-w-3xl lg:order-1 lg:col-span-2" : "lg:order-1"
+          }`}
+        >
           {step === "date" ? (
             <form ref={dateFormRef} onSubmit={continueDates} noValidate>
-              <div className={bookingPanelClass}>
-                <DateSelection
-                  checkIn={checkIn}
-                  checkOut={checkOut}
-                  showErrors={dateAttempted}
-                  onChange={changeDates}
-                />
-              </div>
-              <p className="mt-4 px-1 text-[0.75rem] text-muted">
+              <DateSelection
+                checkIn={checkIn}
+                checkOut={checkOut}
+                showErrors={dateAttempted}
+                onChange={changeDates}
+              />
+              <p className="mt-4 text-center text-[0.75rem] text-muted">
                 Check-in dalle 15 · check-out entro le 10 · pagamento in locanda
               </p>
               <StepActions submitLabel="Continua" />
@@ -360,9 +381,7 @@ export function BookingFlow({
 
           {step === "ospiti" ? (
             <form onSubmit={(event) => void continueGuests(event)} noValidate>
-              <div className={bookingPanelClass}>
-                <GuestCount adults={adults} childCount={childCount} onChange={changeGuests} error={guestError} />
-              </div>
+              <GuestCount adults={adults} childCount={childCount} onChange={changeGuests} error={guestError} />
               <StepActions
                 onBack={() => goTo("date")}
                 submitLabel="Cerca le camere"
@@ -374,11 +393,6 @@ export function BookingFlow({
 
           {step === "camere" ? (
             <form onSubmit={continueRooms}>
-              {checkIn && checkOut ? (
-                <p className="mb-4 text-[0.875rem] text-muted">
-                  {nightLabel(checkIn, checkOut)} · dal {formatLong(checkIn)} al {formatLong(checkOut)}
-                </p>
-              ) : null}
               {error ? (
                 <p role="alert" className="mb-4 rounded-[var(--radius-card)] bg-[rgb(138_59_59_/_0.08)] px-5 py-4 text-[0.875rem] text-[#8a3b3b]">
                   {error}
@@ -390,7 +404,7 @@ export function BookingFlow({
                 </p>
               ) : null}
               {searched && offers.length === 0 && !error ? (
-                <p className={`${bookingPanelClass} text-[0.95rem] leading-relaxed text-muted`}>
+                <p className="rounded-[var(--radius-card)] bg-paper px-5 py-5 text-[0.95rem] leading-relaxed text-muted">
                   Quelle notti sono già prese. Provate altre date, o chiamate il{" "}
                   <a
                     href={hotel.phoneHref}
@@ -438,33 +452,45 @@ export function BookingFlow({
           ) : null}
 
           {step === "dati" ? (
-            <div className="grid gap-5">
-              <BookingSummary
-                checkIn={checkIn}
-                checkOut={checkOut}
-                adults={adults}
-                childCount={childCount}
-                roomName={roomName}
-                rateName={planName}
-                total={rate?.total}
-              />
-              <div className={bookingPanelClass}>
-                <CustomerDetailsForm
-                  value={customer}
-                  onChange={setCustomer}
-                  onSubmit={(details) => void send(details)}
-                  onBack={() => goTo("riepilogo")}
-                  pending={sending}
-                  error={error}
-                />
-              </div>
-            </div>
+            <CustomerDetailsForm
+              value={customer}
+              onChange={setCustomer}
+              onSubmit={(details) => void send(details)}
+              onBack={() => goTo("riepilogo")}
+              pending={sending}
+              error={error}
+            />
           ) : null}
         </div>
+
+        <aside
+          aria-label="Soggiorno in corso"
+          className={`order-1 border-[rgb(37_39_33_/_0.08)] bg-paper/70 px-5 py-6 sm:px-7 lg:sticky lg:top-28 lg:order-2 lg:rounded-br-[var(--radius-panel)] lg:border-l lg:border-b-0 ${
+            step === "riepilogo" ? "hidden" : step === "date" ? "hidden border-b lg:block" : "border-b"
+          }`}
+        >
+          <p className="eyebrow text-muted">{hotel.hamlet}</p>
+          <p className="mt-2 font-serif text-[1.55rem] leading-none text-ink">Il vostro soggiorno</p>
+          <div className="mt-5">
+            <BookingSummary
+              layout="ticket"
+              checkIn={checkIn}
+              checkOut={checkOut}
+              adults={adults}
+              childCount={childCount}
+              roomName={roomName}
+              rateName={planName}
+              total={rate?.total}
+            />
+          </div>
+        </aside>
       </div>
     </div>
   );
 }
+
+const bookingDeskClass =
+  "mx-auto w-full max-w-[76rem] rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-surface shadow-[var(--shadow-lift)]";
 
 function BookingProgress({
   step,
@@ -477,39 +503,48 @@ function BookingProgress({
 }) {
   const current = stepIndex(step);
 
+  const span = STEPS.length - 1;
+
   return (
-    <nav aria-label="Passi della prenotazione">
-      <p className="text-[0.75rem] text-muted">
+    <nav aria-label="Passi della prenotazione" className="border-b border-[rgb(37_39_33_/_0.08)] px-3 py-5 sm:px-8">
+      <p className="text-center text-[0.75rem] text-muted">
         Passo {current + 1} di {STEPS.length}
       </p>
-      <ol className="mt-3 flex gap-2 overflow-x-auto pb-1">
+      <ol className="relative mx-auto mt-4 grid max-w-3xl grid-cols-5">
+        <span aria-hidden className="absolute top-4 right-[10%] left-[10%] h-px bg-[rgb(37_39_33_/_0.12)]" />
+        <span
+          aria-hidden
+          className="absolute top-4 left-[10%] h-px bg-alpine"
+          style={{ width: `${(current / span) * 80}%` }}
+        />
         {STEPS.map((item, index) => {
           const active = item.id === step;
           const enabled = index <= furthest;
+          const done = enabled && !active;
           return (
-            <li key={item.id} className="shrink-0">
+            <li key={item.id} className="relative">
               <button
                 type="button"
                 disabled={!enabled}
                 aria-current={active ? "step" : undefined}
                 onClick={() => onGo(item.id)}
-                className={`inline-flex h-11 items-center gap-2 rounded-full px-3.5 text-[0.8125rem] transition-colors duration-300 ${
-                  active
-                    ? "bg-alpine text-surface"
-                    : enabled
-                      ? "border border-[rgb(37_39_33_/_0.08)] bg-surface text-ink hover:border-alpine/30"
-                      : "cursor-not-allowed text-muted/70"
-                }`}
+                className="flex w-full flex-col items-center gap-2 rounded-lg px-1 py-1 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-alpine disabled:cursor-not-allowed"
               >
                 <span
                   aria-hidden
-                  className={`grid size-6 place-items-center rounded-full text-[0.75rem] ${
-                    active ? "bg-surface/15" : "bg-surface-deep text-ink"
+                  className={`grid size-8 place-items-center rounded-full text-[0.75rem] font-medium ${
+                    active
+                      ? "bg-alpine text-surface"
+                      : done
+                        ? "bg-alpine text-surface"
+                        : "border border-[rgb(37_39_33_/_0.12)] bg-surface text-muted"
                   }`}
                 >
-                  {index + 1}
+                  {done ? <Check className="size-3.5" strokeWidth={2.2} aria-hidden /> : index + 1}
                 </span>
-                {item.label}
+                <span className={`text-[0.65rem] leading-tight sm:text-[0.75rem] ${active ? "font-medium text-ink" : "text-muted"}`}>
+                  {item.label}
+                </span>
               </button>
             </li>
           );

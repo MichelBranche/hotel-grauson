@@ -35,8 +35,10 @@ export function AvailableRooms({
         return (
           <li key={offer.roomTypeId}>
             <article
-              className={`overflow-hidden rounded-[var(--radius-panel)] border bg-surface shadow-[var(--shadow-soft)] transition-[border-color] duration-500 ${
-                selected ? "border-alpine/25" : "border-[rgb(37_39_33_/_0.06)]"
+              className={`overflow-hidden rounded-[var(--radius-card)] border bg-paper transition-[border-color,box-shadow] duration-500 ${
+                selected
+                  ? "border-alpine shadow-[var(--shadow-soft)] ring-1 ring-alpine/30"
+                  : "border-[rgb(37_39_33_/_0.08)]"
               }`}
             >
               <div className="grid lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">

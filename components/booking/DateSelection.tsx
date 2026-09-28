@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 
 import { addDaysISO } from "@pms-core/lib/dates";
 
+import { nightLabel } from "@/components/booking/copy";
 import { stayDateErrors, withCheckoutAfterCheckIn } from "@/components/booking/dates";
 import { bookingErrorClass } from "@/components/booking/styles";
 import type { StayDates } from "@/components/booking/types";
@@ -38,11 +39,12 @@ export function DateSelection({
   const errors = stayDateErrors({ checkIn, checkOut }, today);
   const checkInError = showErrors || touchedIn ? errors.checkIn : undefined;
   const checkOutError = showErrors || touchedOut ? errors.checkOut : undefined;
+  const nightsReady = !errors.checkIn && !errors.checkOut;
 
   return (
     <fieldset className="min-w-0">
       <legend className="sr-only">Date del soggiorno</legend>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_8.5rem_minmax(0,1fr)]">
         <DateField
           id={checkInId}
           name="checkIn"
@@ -56,6 +58,12 @@ export function DateSelection({
             onChange(withCheckoutAfterCheckIn({ checkIn: value, checkOut }));
           }}
         />
+        <div className="grid place-items-center rounded-[var(--radius-soft)] bg-alpine px-3 py-4 text-center text-surface">
+          <p className="text-[0.6875rem] tracking-[0.16em] text-surface/70 uppercase">Notti</p>
+          <p className="mt-1 text-[1.05rem] leading-tight font-medium">
+            {nightsReady ? nightLabel(checkIn, checkOut) : "Da definire"}
+          </p>
+        </div>
         <DateField
           id={checkOutId}
           name="checkOut"
@@ -94,7 +102,7 @@ function DateField({
   onBlur: () => void;
 }) {
   return (
-    <div className="rounded-[var(--radius-soft)] bg-surface-deep/45 px-4 py-3">
+    <div className="flex h-full flex-col justify-center rounded-[var(--radius-soft)] bg-paper px-4 py-4 sm:px-5">
       <label htmlFor={id} className="flex items-center gap-2 text-[0.75rem] text-muted">
         <CalendarRange className="size-4 shrink-0" strokeWidth={1.5} aria-hidden />
         {label}

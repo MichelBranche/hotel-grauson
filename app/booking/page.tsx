@@ -90,7 +90,7 @@ export default async function BookingPage({
         detail={`${hotel.address.street} · ${hotel.address.city}`}
       />
 
-      <section aria-labelledby="cerca-title" className="shell relative z-20 -mt-8 pb-16 sm:-mt-10 sm:pb-24">
+      <section aria-labelledby="cerca-title" className="shell relative z-20 -mt-8 pb-20 sm:-mt-12 sm:pb-28">
         <BookingFlow
           checkIn={checkIn}
           checkOut={checkOut}
