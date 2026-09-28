@@ -82,7 +82,10 @@ function useAutumnFall() {
 
   useEffect(() => {
     if (reducedMotion()) return;
-    setFalling(true);
+    // Il plugin di lint non vuole setState sincrono nell'effetto.
+    // Un frame dopo l'avvio le foglie cadono comunque subito, senza aspettare lo scroll.
+    const frame = requestAnimationFrame(() => setFalling(true));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   return falling;
@@ -138,7 +141,10 @@ export function AutumnStrays() {
   const [root, setRoot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    setRoot(document.getElementById("contenuto"));
+    const frame = requestAnimationFrame(() => {
+      setRoot(document.getElementById("contenuto"));
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   if (!root) return null;
