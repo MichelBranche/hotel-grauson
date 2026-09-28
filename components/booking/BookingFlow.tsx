@@ -114,7 +114,7 @@ export function BookingFlow({
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dateFormRef = useRef<HTMLFormElement>(null);
-  const skipFocus = useRef(true);
+  const previousStep = useRef(step);
   const busy = useRef(false);
 
   const selected = useMemo(
@@ -127,10 +127,11 @@ export function BookingFlow({
   const planName = rate ? rateLabel(rate.name) : undefined;
 
   useEffect(() => {
-    if (skipFocus.current) {
-      skipFocus.current = false;
-      return;
-    }
+    // All'apertura il passo è già quello iniziale: non spostiamo il focus,
+    // altrimenti la tastiera salta la navigazione del sito.
+    // Lo spostiamo solo quando l'ospite cambia passo.
+    if (previousStep.current === step) return;
+    previousStep.current = step;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     headingRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     headingRef.current?.focus();

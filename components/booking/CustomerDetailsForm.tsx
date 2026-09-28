@@ -295,21 +295,22 @@ function PrivacyField({
           onChange={(event) => onChange(event.target.checked)}
           className="mt-1 size-6 shrink-0 accent-alpine"
         />
-        <p className="text-[0.9375rem] leading-relaxed text-ink">
-          <label htmlFor={id}>Ho letto l&apos;</label>
+        <div className="text-[0.9375rem] leading-relaxed text-ink">
+          <label htmlFor={id}>
+            Acconsento al trattamento dei dati per gestire questa richiesta.
+            <span aria-hidden> *</span>
+            <span className="sr-only"> Campo obbligatorio.</span>
+          </label>
           <a
             href="/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline decoration-[rgb(37_39_33_/_0.25)] underline-offset-4 hover:decoration-ink"
+            className="mt-1 inline-flex min-h-11 items-center underline decoration-[rgb(37_39_33_/_0.25)] underline-offset-4 hover:decoration-ink"
           >
-            informativa privacy
+            Leggi l&apos;informativa privacy
             <span className="sr-only"> (si apre in un&apos;altra scheda)</span>
           </a>
-          <label htmlFor={id}> e acconsento al trattamento dei dati per gestire questa richiesta.</label>
-          <span aria-hidden> *</span>
-          <span className="sr-only"> Campo obbligatorio.</span>
-        </p>
+        </div>
       </div>
       {error ? (
         <p id={errorId} className={bookingErrorClass}>
