@@ -39,7 +39,7 @@ export function BookingSummary({
     <dl
       aria-labelledby={labelledBy}
       aria-label={labelledBy ? undefined : "Riepilogo del soggiorno"}
-      className={ticket ? "flex flex-col gap-3.5" : `${bookingPanelClass} grid gap-5 sm:grid-cols-2`}
+      className={ticket ? "flex w-full flex-col gap-3.5" : `${bookingPanelClass} grid w-full gap-5 sm:grid-cols-2`}
     >
       <Row label="Check-in" value={dayLabel(checkIn)} ticket={ticket} />
       <Row label="Check-out" value={dayLabel(checkOut)} ticket={ticket} />
