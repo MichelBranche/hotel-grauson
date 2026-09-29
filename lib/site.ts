@@ -139,7 +139,7 @@ export function hotelJsonLd() {
       },
       result: {
         "@type": "LodgingReservation",
-        name: "Richiesta di soggiorno",
+        name: "Prenotazione",
       },
     },
   };

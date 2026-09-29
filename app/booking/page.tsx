@@ -8,7 +8,7 @@ import { publicAvailabilityAction } from "@pms-core/actions/booking";
 import type { AvailabilityOffer } from "@pms-core/types";
 
 const description =
-  "Prenota una camera alla Locanda Grauson, Gimillan di Cogne. Date, tipologia e recapiti. Conferma della reception.";
+  "Prenota una camera alla Locanda Grauson, Gimillan di Cogne. L'acconto online conferma il soggiorno.";
 
 export const metadata = pageMetadata({
   title: "Prenota",
@@ -19,7 +19,7 @@ export const metadata = pageMetadata({
 export default async function BookingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkIn?: string; checkOut?: string; adults?: string; guests?: string }>;
+  searchParams: Promise<{ checkIn?: string; checkOut?: string; adults?: string; guests?: string; checkout?: string }>;
 }) {
   const params = await searchParams;
   const checkIn = params.checkIn ?? "";
@@ -66,7 +66,7 @@ export default async function BookingPage({
       <PageHero
         eyebrow={`Soggiorno · ${hotel.hamlet}`}
         title={["Una camera", "a Gimillan"]}
-        lede="Scegliete le notti. Vi confermiamo noi, per telefono o per lettera."
+        lede="Scegliete le notti. L'acconto online conferma la camera."
         note={"Check-in\ndalle 15"}
         media={{
           src: "/images/camera-locanda.jpg",
@@ -83,6 +83,7 @@ export default async function BookingPage({
           initialOffers={initialOffers}
           initialNotices={initialNotices}
           initialError={initialError}
+          checkoutCancelled={params.checkout === "cancelled"}
         />
       </section>
     </PageShell>

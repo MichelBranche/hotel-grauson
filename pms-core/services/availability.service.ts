@@ -104,6 +104,7 @@ export const availabilityService = {
                 code: plan.code,
                 name: plan.name,
                 refundable: plan.isRefundable,
+                depositPercent: plan.depositPercent,
                 nightly: result.nightly,
                 total: result.total,
                 minimumStay: result.minStay,

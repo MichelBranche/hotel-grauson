@@ -7,8 +7,9 @@ import { BookingSearch } from "@/components/booking/BookingSearch";
 import { catalogForType, rateLabel } from "@/lib/booking-catalog";
 import { hotel } from "@/lib/content";
 import { publicAvailabilityAction, publicCreateReservationAction } from "@pms-core/actions/booking";
+import { chargedDepositPercent, depositEuros } from "@pms-core/lib/deposit";
 import { formatRange, nightsBetween } from "@pms-core/lib/dates";
-import { formatMoney } from "@pms-core/lib/money";
+import { formatMoney, formatMoneyExact } from "@pms-core/lib/money";
 import type { AvailabilityOffer } from "@pms-core/types";
 
 const MISSING_GUEST = "Inserisci nome, cognome ed email.";
@@ -29,6 +30,7 @@ export function BookingFlow({
   initialOffers = [],
   initialNotices = [],
   initialError = null,
+  checkoutCancelled = false,
 }: {
   checkIn?: string;
   checkOut?: string;
@@ -36,6 +38,7 @@ export function BookingFlow({
   initialOffers?: AvailabilityOffer[];
   initialNotices?: string[];
   initialError?: string | null;
+  checkoutCancelled?: boolean;
 }) {
   const [checkIn, setCheckIn] = useState(initialIn);
   const [checkOut, setCheckOut] = useState(initialOut);
@@ -47,7 +50,6 @@ export function BookingFlow({
   const [ratePlanId, setRatePlanId] = useState("");
   const [guest, setGuest] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [error, setError] = useState<string | null>(initialError);
-  const [code, setCode] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -61,7 +63,6 @@ export function BookingFlow({
 
   const search = async () => {
     setError(null);
-    setCode(null);
     setSearching(true);
     try {
       const result = await publicAvailabilityAction({ checkIn, checkOut, adults });
@@ -89,21 +90,8 @@ export function BookingFlow({
     }
   };
 
-  if (code) {
-    return (
-      <section className="rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-surface px-6 py-10 shadow-[var(--shadow-soft)] sm:px-10 sm:py-14">
-        <p className="eyebrow text-muted">Richiesta inviata</p>
-        <h2 className="display-lg mt-4 max-w-[16ch]">Vi aspettiamo a Gimillan</h2>
-        <p className="lede mt-5 max-w-[36ch]">
-          Codice {code}
-          {checkIn && checkOut ? `. ${formatRange(checkIn, checkOut)}` : ""}. La reception conferma il soggiorno. Il pagamento si fa in locanda.
-        </p>
-        <p className="mt-8 text-[0.875rem] text-muted">
-          Per qualsiasi cosa, {hotel.phone} · {hotel.email}
-        </p>
-      </section>
-    );
-  }
+  const deposit = rate ? depositEuros(rate.total, rate.depositPercent) : 0;
+  const depositPercent = rate ? chargedDepositPercent(rate.depositPercent) : 100;
 
   return (
     <div className="space-y-5 sm:space-y-7">
@@ -130,8 +118,14 @@ export function BookingFlow({
         onSubmit={() => void search()}
       />
 
+      {checkoutCancelled ? (
+        <p role="status" className="rounded-[var(--radius-card)] bg-[rgb(138_59_59_/_0.08)] px-5 py-4 text-[0.875rem] text-[#8a3b3b]">
+          Pagamento annullato. La camera non è confermata: potete riprovare.
+        </p>
+      ) : null}
+
       <p className="px-1 text-[0.75rem] text-muted">
-        Check-in dalle 15 · check-out entro le 10 · pagamento in locanda
+        Check-in dalle 15 · check-out entro le 10 · acconto online per confermare
       </p>
 
       <div id="disponibilita" className="scroll-mt-28">
@@ -181,7 +175,7 @@ export function BookingFlow({
                 setRatePlanId(nextRate);
                 if (opening) {
                   requestAnimationFrame(() => {
-                    document.getElementById("richiesta")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    document.getElementById("prenotazione")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                   });
                 }
               }}
@@ -189,8 +183,8 @@ export function BookingFlow({
 
             {selected && rate && catalog ? (
               <form
-                id="richiesta"
-                aria-labelledby="richiesta-title"
+                id="prenotazione"
+                aria-labelledby="prenotazione-title"
                 className="scroll-mt-28 rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-paper p-5 shadow-[var(--shadow-soft)] sm:p-7"
                 noValidate
                 onSubmit={async (event) => {
@@ -207,6 +201,7 @@ export function BookingFlow({
                   }
                   setSending(true);
                   setError(null);
+                  let leaving = false;
                   try {
                     const result = await publicCreateReservationAction({
                       roomId,
@@ -226,20 +221,26 @@ export function BookingFlow({
                       setError(result.error);
                       return;
                     }
-                    setCode(result.data.code);
+                    if (!result.data.checkoutUrl) {
+                      setError("Non riusciamo ad aprire il pagamento. Riprovate.");
+                      return;
+                    }
+                    window.location.assign(result.data.checkoutUrl);
+                    leaving = true;
                   } catch {
-                    setError("La richiesta non è partita. Riprovate.");
+                    setError("Il pagamento non è partito. Riprovate.");
                   } finally {
-                    setSending(false);
+                    if (!leaving) setSending(false);
                   }
                 }}
               >
-                <p className="eyebrow text-muted">Richiesta, non prenotazione</p>
-                <h3 id="richiesta-title" className="display-md mt-2 max-w-[18ch]">
-                  Chiedete questa camera
+                <p className="eyebrow text-muted">Acconto</p>
+                <h3 id="prenotazione-title" className="display-md mt-2 max-w-[18ch]">
+                  Confermate questa camera
                 </h3>
                 <p className="mt-3 max-w-[46ch] text-[0.875rem] leading-relaxed text-muted">
-                  Nome, cognome ed email servono perché la reception vi risponda. La camera non è confermata finché non vi sentiamo, e qui non si paga.
+                  Nome, cognome ed email per la prenotazione. L&apos;acconto si paga ora e conferma il soggiorno.
+                  {depositPercent < 100 ? " Il resto si salda in locanda." : ""}
                 </p>
                 <p className="mt-4 text-[0.875rem] text-ink">
                   {catalog.label} · {rateLabel(rate.name)} · {formatMoney(rate.total)}
@@ -305,14 +306,16 @@ export function BookingFlow({
                     aria-busy={sending || undefined}
                     className="h-[3.125rem] rounded-full bg-accent px-7 text-[0.8125rem] font-medium text-surface transition-colors duration-500 hover:bg-accent-hover disabled:opacity-60"
                   >
-                    {sending ? "Invio…" : "Invia la richiesta"}
+                    {sending ? "Apertura del pagamento…" : `Paga ${formatMoneyExact(deposit)}`}
                   </button>
-                  <p className="text-[0.8125rem] text-muted">Nessun addebito. Pagamento in locanda.</p>
+                  <p className="text-[0.8125rem] text-muted">
+                    {depositPercent < 100 ? `Acconto ${depositPercent}%` : "Intero soggiorno"}
+                  </p>
                 </div>
               </form>
             ) : (
               <p className="max-w-[46ch] px-1 text-[0.875rem] leading-relaxed text-muted">
-                Scegliete una tariffa per chiedere la camera. Non la prenota: vi confermiamo noi, e si paga in locanda.
+                Scegliete una tariffa per vedere l&apos;acconto e confermare la camera.
               </p>
             )}
           </div>

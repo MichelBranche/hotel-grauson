@@ -23,7 +23,6 @@ export function BookingWizard({
   const [ratePlanId, setRatePlanId] = useState("");
   const [guest, setGuest] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [error, setError] = useState<string | null>(null);
-  const [code, setCode] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const selected = useMemo(
@@ -120,7 +119,11 @@ export function BookingWizard({
                 setError(result.error);
                 return;
               }
-              setCode(result.data.code ?? "");
+              if (!result.data.checkoutUrl) {
+                setError("Non riusciamo ad aprire il pagamento.");
+                return;
+              }
+              window.location.assign(result.data.checkoutUrl);
             }}
           >
             <input className="rounded-2xl border border-[rgb(37_39_33_/_0.08)] px-3 py-2" placeholder="Nome" value={guest.firstName} onChange={(event) => setGuest({ ...guest, firstName: event.target.value })} required />
@@ -129,14 +132,13 @@ export function BookingWizard({
             <input className="rounded-2xl border border-[rgb(37_39_33_/_0.08)] px-3 py-2" placeholder="Telefono" value={guest.phone} onChange={(event) => setGuest({ ...guest, phone: event.target.value })} />
             <p className="text-sm text-muted">{rate ? `${rate.name} · ${formatMoney(rate.total)}` : "Seleziona camera e tariffa"}</p>
             <button type="submit" disabled={pending || !roomId} className="rounded-full bg-alpine px-5 py-2.5 text-sm text-surface">
-              Conferma prenotazione
+              Paga e conferma
             </button>
           </form>
         </div>
       ) : null}
 
       {error ? <p className="mt-4 text-sm text-[#8a3b3b]">{error}</p> : null}
-      {code ? <p className="mt-4 text-sm">Prenotazione confermata: {code}. La reception la vede subito nel planning.</p> : null}
     </div>
   );
 }

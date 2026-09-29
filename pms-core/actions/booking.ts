@@ -9,6 +9,7 @@ import { rateLimit } from "@pms-core/auth/rate-limit";
 import { wrapAction } from "@pms-core/actions/result";
 import { createReservation, defaultPropertyId, getAvailabilityDetailed } from "@pms-core/integrations/booking-engine";
 import { DomainError } from "@pms-core/lib/errors";
+import { startCheckout } from "@pms-core/services/checkout.service";
 
 const searchSchema = z.object({
   checkIn: z.string().min(10),
@@ -68,11 +69,22 @@ export async function publicCreateReservationAction(input: {
     const reservation = await createReservation({
       ...input,
       propertyId,
+      status: "OPTION",
       guest: guestDetails(guestSchema.parse(input.guest)),
     });
     if (!reservation?.id || !reservation.code) {
-      throw new DomainError("La richiesta non è stata registrata. Riprovate o chiamate la locanda.");
+      throw new DomainError("La prenotazione non è stata registrata. Riprovate o chiamate la locanda.");
     }
+    const checkout = await startCheckout({
+      reservationId: reservation.id,
+      propertyId,
+      code: reservation.code,
+      total: reservation.total,
+      ratePlanId: reservation.ratePlanId,
+      email: reservation.email,
+      checkIn: reservation.checkIn,
+      checkOut: reservation.checkOut,
+    });
     try {
       after(() => {
         revalidatePath("/pms", "layout");
@@ -80,6 +92,12 @@ export async function publicCreateReservationAction(input: {
     } catch (error) {
       console.error("Revalidate skipped after a public booking.", error);
     }
-    return { id: reservation.id, code: reservation.code, status: reservation.status };
+    return {
+      id: reservation.id,
+      code: reservation.code,
+      status: reservation.status,
+      checkoutUrl: checkout.checkoutUrl,
+      depositAmount: checkout.depositAmount,
+    };
   });
 }
