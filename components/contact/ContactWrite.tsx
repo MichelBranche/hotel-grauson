@@ -1,17 +1,19 @@
 import Link from "next/link";
 
+import { ContactRequestForm } from "@/components/contact/ContactRequestForm";
 import { Reveal } from "@/components/ui/Reveal";
 import { hotel } from "@/lib/content";
 
 export function ContactWrite() {
   return (
     <section aria-labelledby="scrivere-title" className="shell mt-5 sm:mt-7">
-      <Reveal>
+      <div className="grid items-stretch gap-5 lg:grid-cols-2">
+        <Reveal className="h-full">
         <div
           data-reveal
-          className="on-dark relative overflow-hidden rounded-[var(--radius-panel)] bg-alpine-deep px-6 py-12 text-surface sm:px-10 sm:py-16 lg:px-16"
+          className="on-dark relative flex h-full flex-col justify-center overflow-hidden rounded-[var(--radius-panel)] bg-alpine-deep px-6 py-12 text-surface sm:px-10 sm:py-16"
         >
-          <p className="hand absolute top-8 right-[var(--gutter)] hidden max-w-[8rem] rotate-[-3deg] text-right text-[1.25rem] text-surface/45 md:block">
+          <p className="hand absolute top-8 right-8 hidden max-w-[8rem] rotate-[-3deg] text-right text-[1.25rem] text-surface/45 md:block">
             Reception
           </p>
 
@@ -42,7 +44,13 @@ export function ContactWrite() {
             </Link>
           </div>
         </div>
-      </Reveal>
+        </Reveal>
+        <Reveal className="h-full">
+          <div data-reveal className="h-full">
+            <ContactRequestForm />
+          </div>
+        </Reveal>
+      </div>
     </section>
   );
 }
