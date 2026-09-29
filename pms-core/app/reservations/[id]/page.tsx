@@ -2,52 +2,120 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requirePermission } from "@pms-core/auth/guards";
-import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
-import { auditService } from "@pms-core/services/audit.service";
-import { reservationStatusMeta } from "@pms-core/config/status";
+import { ReservationDesk } from "@pms-core/components/reservations/reservation-desk";
 import { StatusBadge } from "@pms-core/components/ui/badge";
-import { toISODate } from "@pms-core/lib/dates";
-import { formatMoney } from "@pms-core/lib/money";
+import { can } from "@pms-core/config/permissions";
+import { propertyConfig } from "@pms-core/config/property";
+import { reservationStatusMeta } from "@pms-core/config/status";
+import { prisma } from "@pms-core/database/client";
+import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
+import { todayInTimeZone, toISODate } from "@pms-core/lib/dates";
+import { roundMoney } from "@pms-core/lib/money";
 import { guestDisplay, parseJson } from "@pms-core/lib/utils";
+import { auditService } from "@pms-core/services/audit.service";
+import { rateService } from "@pms-core/services/rate.service";
+import type { PlanningReservation, PlanningRoom } from "@pms-core/types";
 
 export default async function ReservationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermission("reservations.read");
+  const session = await requirePermission("reservations.read");
   const { id } = await params;
   const reservation = await reservationRepo.findById(id);
-  if (!reservation) notFound();
-  const audit = await auditService.list(reservation.propertyId, reservation.id);
-  const paid = reservation.payments.reduce((sum, payment) => sum + payment.amount, 0);
+  if (!reservation || reservation.propertyId !== session.propertyId) notFound();
+
+  const [audit, rooms, plans, extras, property] = await Promise.all([
+    auditService.list(reservation.propertyId, reservation.id),
+    prisma.room.findMany({
+      where: { propertyId: reservation.propertyId },
+      include: { roomType: true, assignedFloor: true },
+      orderBy: { number: "asc" },
+    }),
+    prisma.ratePlan.findMany({
+      where: {
+        propertyId: reservation.propertyId,
+        OR: [{ active: true }, ...(reservation.ratePlanId ? [{ id: reservation.ratePlanId }] : [])],
+      },
+      select: { id: true, code: true, name: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    rateService.extras(reservation.propertyId),
+    prisma.property.findUnique({ where: { id: reservation.propertyId }, select: { timezone: true } }),
+  ]);
+
+  const paid = roundMoney(reservation.payments.reduce((sum, payment) => sum + payment.amount, 0));
+  const view: PlanningReservation = {
+    id: reservation.id,
+    code: reservation.code,
+    roomId: reservation.roomId,
+    roomNumber: reservation.room.number,
+    roomTypeName: reservation.roomType.name,
+    guestId: reservation.guestId,
+    guestName: guestDisplay(reservation.guest.firstName, reservation.guest.lastName),
+    guestFirstName: reservation.guest.firstName,
+    guestLastName: reservation.guest.lastName,
+    ratePlanId: reservation.ratePlanId,
+    email: reservation.guest.email,
+    phone: reservation.guest.phone,
+    adults: reservation.adults,
+    children: reservation.children,
+    checkIn: toISODate(reservation.checkIn),
+    checkOut: toISODate(reservation.checkOut),
+    nights: reservation.nights,
+    status: reservation.status,
+    total: reservation.total,
+    currency: reservation.currency,
+    notes: reservation.notes,
+    vip: reservation.vip,
+    color: "#dce8dc",
+  };
+  const planningRooms: PlanningRoom[] = rooms.map((room) => ({
+    id: room.id,
+    number: room.number,
+    name: room.name,
+    floor: room.floor,
+    floorId: room.floorId,
+    floorName: room.assignedFloor?.displayName ?? null,
+    capacity: room.capacity,
+    status: room.status,
+    roomTypeId: room.roomTypeId,
+    roomTypeName: room.roomType.name,
+    active: room.active,
+  }));
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-[var(--pms-muted)]">{reservation.code}</p>
-          <h1 className="text-3xl">
-            {guestDisplay(reservation.guest.firstName, reservation.guest.lastName)}
-          </h1>
+          <h1 className="text-3xl">{view.guestName}</h1>
         </div>
         <StatusBadge label={reservationStatusMeta[reservation.status].label} tone={reservationStatusMeta[reservation.status].tone} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="pms-card p-5 text-sm">
-          <p>Email: {reservation.guest.email ?? "—"}</p>
-          <p>Telefono: {reservation.guest.phone ?? "—"}</p>
-          <p>
-            {toISODate(reservation.checkIn)} → {toISODate(reservation.checkOut)} · {reservation.nights} notti
-          </p>
-          <p>
-            Camera {reservation.room.number} · {reservation.roomType.name}
-          </p>
-          <p>
-            {reservation.adults} adulti{reservation.children ? ` · ${reservation.children} bambini` : ""}
-          </p>
-          <p>Canale: {reservation.channel} · fonte {reservation.source}</p>
-          <p className="mt-3">Totale {formatMoney(reservation.total)} · pagato {formatMoney(paid)}</p>
-          <Link href="/pms/planning" className="mt-4 inline-block text-xs underline">
-            Apri nel planning
-          </Link>
-        </section>
+        <ReservationDesk
+          reservation={view}
+          stay={{
+            status: reservation.status,
+            roomStatus: reservation.room.status,
+            roomRate: reservation.roomRate,
+            extrasTotal: reservation.extrasTotal,
+            taxesTotal: reservation.taxesTotal,
+            paid,
+          }}
+          rooms={planningRooms}
+          plans={plans}
+          extras={extras}
+          businessToday={todayInTimeZone(property?.timezone || propertyConfig.timezone)}
+          balance={roundMoney(Math.max(0, reservation.total - paid))}
+          permissions={{
+            canWrite: can(session.role, "reservations.write"),
+            canModify: can(session.role, "planning.move"),
+            canCancel: can(session.role, "reservations.cancel"),
+            canCheckIn: can(session.role, "reservations.checkin"),
+            canPay: can(session.role, "payments.write"),
+            canExtra: can(session.role, "reservations.write"),
+            canForceCancel: session.role === "OWNER" || session.role === "ADMIN",
+          }}
+        />
         <section className="pms-card p-5">
           <h2 className="text-sm text-[var(--pms-muted)]">Audit</h2>
           <ul className="mt-3 space-y-2 text-sm">
@@ -61,6 +129,9 @@ export default async function ReservationDetailPage({ params }: { params: Promis
               </li>
             ))}
           </ul>
+          <Link href="/pms/planning" className="mt-4 inline-block text-xs underline">
+            Apri nel planning
+          </Link>
         </section>
       </div>
     </div>

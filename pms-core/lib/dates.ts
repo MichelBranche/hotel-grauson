@@ -15,6 +15,11 @@ export function todayISO(now = new Date()): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+/** Calendar date in a property timezone, as YYYY-MM-DD. */
+export function todayInTimeZone(timeZone: string, now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
 export function addDaysISO(iso: string, amount: number): string {
   const date = toDate(iso);
   date.setUTCDate(date.getUTCDate() + amount);

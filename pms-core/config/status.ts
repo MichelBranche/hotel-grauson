@@ -32,4 +32,11 @@ export const occupyingStatuses: ReservationStatus[] = (
   .filter(([, meta]) => meta.occupies)
   .map(([status]) => status);
 
+/** Cancelled and no-show free the room at once. Planning hides them; search already ignores non-occupying statuses. */
+export const releasedStatuses: ReservationStatus[] = ["CANCELLED", "NO_SHOW"];
+
+export const planningStatuses: ReservationStatus[] = (
+  Object.keys(reservationStatusMeta) as ReservationStatus[]
+).filter((status) => !releasedStatuses.includes(status));
+
 export const blockedRoomStatuses: RoomStatus[] = ["OUT_OF_ORDER", "OUT_OF_SERVICE"];

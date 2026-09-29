@@ -29,6 +29,9 @@ export type PlanningReservation = {
   roomTypeName: string;
   guestId: string;
   guestName: string;
+  guestFirstName: string;
+  guestLastName: string;
+  ratePlanId: string | null;
   email: string | null;
   phone: string | null;
   adults: number;

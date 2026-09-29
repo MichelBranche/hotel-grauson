@@ -1,6 +1,7 @@
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
 import { roomRepo } from "@pms-core/database/repositories/room.repo";
 import { prisma } from "@pms-core/database/client";
+import { planningStatuses } from "@pms-core/config/status";
 import { toDate, toISODate } from "@pms-core/lib/dates";
 import { guestDisplay } from "@pms-core/lib/utils";
 import type { PlanningData, PlanningReservation } from "@pms-core/types";
@@ -16,7 +17,7 @@ export const planningService = {
   async get(propertyId: string, from: string, to: string): Promise<PlanningData> {
     const [rooms, reservations, blocks, closed] = await Promise.all([
       roomRepo.listForPlanning(propertyId, from, to),
-      reservationRepo.listInRange(propertyId, from, to),
+      reservationRepo.listInRange(propertyId, from, to, planningStatuses),
       prisma.roomBlock.findMany({
         where: { propertyId, startDate: { lt: toDate(to) }, endDate: { gte: toDate(from) } },
         orderBy: { startDate: "asc" },
@@ -53,6 +54,9 @@ export const planningService = {
           roomTypeName: reservation.roomType.name,
           guestId: reservation.guestId,
           guestName: guestDisplay(reservation.guest.firstName, reservation.guest.lastName),
+          guestFirstName: reservation.guest.firstName,
+          guestLastName: reservation.guest.lastName,
+          ratePlanId: reservation.ratePlanId,
           email: reservation.guest.email,
           phone: reservation.guest.phone,
           adults: reservation.adults,
