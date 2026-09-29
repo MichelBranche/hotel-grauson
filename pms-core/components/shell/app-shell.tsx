@@ -1,13 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { getNotificationsAction } from "@pms-core/actions/lookups";
 import { CommandPalette } from "@pms-core/components/shell/command-palette";
 import { NotificationCenter } from "@pms-core/components/shell/notification-center";
 import { Sidebar } from "@pms-core/components/shell/sidebar";
 import { Topbar } from "@pms-core/components/shell/topbar";
+import {
+  applySidebarAttr,
+  readSidebarCollapsed,
+  subscribeSidebarCollapsed,
+  writeSidebarCollapsed,
+} from "@pms-core/lib/sidebar-pref";
 import type { SessionUser } from "@pms-core/types";
 
 type Note = { id: string; title: string; body: string; read: boolean; createdAt: Date };
@@ -33,6 +39,15 @@ export function AppShell({
   // Pending only while we are still on the page the click came from; once the
   // router commits the new pathname it clears itself without an effect.
   const pendingHref = pending && pending.from === pathname ? pending.href : null;
+  const collapsed = useSyncExternalStore(subscribeSidebarCollapsed, readSidebarCollapsed, () => false);
+
+  // The rail's look is CSS on an <html> attribute (set pre-paint by the boot
+  // script); keep it in sync with storage, including other tabs.
+  useEffect(() => {
+    const sync = () => applySidebarAttr(readSidebarCollapsed());
+    sync();
+    return subscribeSidebarCollapsed(sync);
+  }, []);
 
   async function refreshNotes() {
     const result = await getNotificationsAction();
@@ -47,6 +62,7 @@ export function AppShell({
       <Sidebar
         role={user.role}
         mobileOpen={menuOpen}
+        collapsed={collapsed}
         pendingHref={pendingHref}
         onNavigateStart={(href) => setPending(href ? { href, from: pathname } : null)}
         onNavigate={() => setMenuOpen(false)}
@@ -67,6 +83,8 @@ export function AppShell({
           onSearch={() => setSearchOpen(true)}
           onNotifications={() => setNotesOpen(true)}
           onMenu={() => setMenuOpen((value) => !value)}
+          sidebarCollapsed={collapsed}
+          onToggleSidebar={() => writeSidebarCollapsed(!collapsed)}
         />
         <main className="min-h-0 flex-1 overflow-auto overscroll-contain pms-scroll px-4 pb-6 md:px-6" aria-busy={pendingHref ? true : undefined}>
           <div key={pathname} className="pms-page-in">

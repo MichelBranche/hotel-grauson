@@ -55,7 +55,7 @@ export const dashboardService = {
       where: { propertyId },
       include: { guest: true, room: true },
       orderBy: { createdAt: "desc" },
-      take: 6,
+      take: 4,
     });
   },
 };

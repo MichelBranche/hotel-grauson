@@ -265,6 +265,47 @@ body:has([data-pms]) {
   }
 }
 
+/* Desktop rail. The icon column sits at the same x in both states, so only the
+   width moves and the labels fade under the clip. */
+[data-pms] .pms-nav-label,
+[data-pms] .pms-brand-full {
+  transition: opacity 180ms ease;
+}
+
+[data-pms] .pms-brand-mark {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+@media (min-width: 768px) {
+  [data-pms] .pms-sidebar {
+    transition: width 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  html[data-pms-sidebar="collapsed"] [data-pms] {
+    --pms-sidebar: 64px;
+  }
+
+  html[data-pms-sidebar="collapsed"] [data-pms] .pms-nav-label,
+  html[data-pms-sidebar="collapsed"] [data-pms] .pms-brand-full {
+    opacity: 0;
+  }
+
+  html[data-pms-sidebar="collapsed"] [data-pms] .pms-brand-mark {
+    opacity: 1;
+  }
+
+  html[data-pms-sidebar="collapsed"] [data-pms] .pms-brand {
+    height: 2.5rem;
+    overflow: hidden;
+  }
+
+  html[data-pms-sidebar="collapsed"] [data-pms] .pms-nav-link {
+    height: 2.5rem;
+  }
+}
+
 @keyframes pms-overlay-in {
   from {
     opacity: 0;

@@ -1,7 +1,7 @@
 import { BedDouble, CalendarDays, Sparkles } from "lucide-react";
 
 import { requirePermission } from "@pms-core/auth/guards";
-import { PlanningBoard } from "@pms-core/components/planning/planning-board";
+import { PlanningWorkspace } from "@pms-core/components/planning/planning-workspace";
 import { KpiCard } from "@pms-core/components/kpi-card";
 import { can } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
@@ -10,12 +10,22 @@ import { dashboardService } from "@pms-core/services/dashboard.service";
 import { planningService } from "@pms-core/services/planning.service";
 import { rateService } from "@pms-core/services/rate.service";
 import { addDaysISO, todayISO, todayInTimeZone } from "@pms-core/lib/dates";
-import { OccupancyWidget } from "@pms-core/components/planning/side-widgets";
+import { toRecentStays } from "@pms-core/lib/recent-stays";
 
-export default async function PlanningPage() {
+const DEFAULT_FROM = "2026-12-15";
+const DEFAULT_SPAN = 14;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function PlanningPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string; date?: string }>;
+}) {
   const session = await requirePermission("planning.read");
-  const from = "2026-12-15";
-  const to = addDaysISO(from, 14);
+  const { focus, date } = await searchParams;
+  const focusDate = date && ISO_DATE.test(date) ? date : undefined;
+  const from = focusDate ? addDaysISO(focusDate, -Math.floor(DEFAULT_SPAN / 2)) : DEFAULT_FROM;
+  const to = addDaysISO(from, DEFAULT_SPAN);
   const today = todayISO();
   const [planning, kpis, extras, recent, plans, property] = await Promise.all([
     planningService.get(session.propertyId, from, to),
@@ -41,7 +51,7 @@ export default async function PlanningPage() {
         <KpiCard icon={CalendarDays} label="Arrivi oggi" value={kpis.arrivals} />
         <KpiCard icon={CalendarDays} label="Partenze oggi" value={kpis.departures} />
       </div>
-      <PlanningBoard
+      <PlanningWorkspace
         initial={{ ...planning, from }}
         extras={extras}
         plans={plans}
@@ -57,8 +67,12 @@ export default async function PlanningPage() {
         }}
         canSetRoomStatus={can(session.role, "rooms.write") || can(session.role, "housekeeping.write")}
         roomStatusVia={can(session.role, "rooms.write") ? "rooms" : "housekeeping"}
+        occupancy={kpis.occupancy}
+        free={kpis.free}
+        cleaning={kpis.cleaning}
+        recent={toRecentStays(recent)}
+        initialFocus={focus ? { id: focus, checkIn: focusDate } : null}
       />
-      <OccupancyWidget occupancy={kpis.occupancy} free={kpis.free} cleaning={kpis.cleaning} recent={recent} />
     </div>
   );
 }
