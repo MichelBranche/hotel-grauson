@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import type { RoomStatus } from "@prisma/client";
-import { BedDouble, CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { BedDouble, CalendarDays, ChevronLeft, ChevronRight, CircleCheck, Plus, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -104,7 +104,13 @@ function Block({
   );
 }
 
-const ROOM_STATUS_CHOICES: RoomStatus[] = ["CLEANING", "AVAILABLE", "INSPECTED"];
+const ROOM_STATUS_CHOICES = ["CLEANING", "AVAILABLE", "INSPECTED"] as const satisfies readonly RoomStatus[];
+
+const ROOM_STATUS_CHOICE_ICON = {
+  CLEANING: Sparkles,
+  AVAILABLE: CircleCheck,
+  INSPECTED: ShieldCheck,
+} as const;
 
 export function PlanningBoard({
   initial,
@@ -583,17 +589,21 @@ function RoomStatusControl({
         <StatusBadge label={pending ? "Salvataggio…" : meta.label} tone={meta.tone} />
       </button>
       {open ? (
-        <div className="absolute top-7 left-0 z-40 grid min-w-36 gap-1 rounded-2xl border border-[var(--pms-line)] bg-[var(--pms-surface)] p-1 shadow-[var(--pms-shadow)]">
-          {choices.map((choice) => (
-            <button
-              key={choice}
-              type="button"
-              className="rounded-full px-3 py-1.5 text-left text-xs text-[var(--pms-text)] hover:bg-[var(--pms-surface-dark)]"
-              onClick={() => onPick(choice)}
-            >
-              {roomStatusMeta[choice].label}
-            </button>
-          ))}
+        <div className="absolute top-7 left-0 z-40 grid w-max min-w-[180px] gap-1 rounded-2xl border border-[var(--pms-line)] bg-[var(--pms-surface)] p-1 shadow-[var(--pms-shadow)]">
+          {choices.map((choice) => {
+            const Icon = ROOM_STATUS_CHOICE_ICON[choice];
+            return (
+              <button
+                key={choice}
+                type="button"
+                className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-left text-xs text-[var(--pms-text)] hover:bg-[var(--pms-surface-dark)]"
+                onClick={() => onPick(choice)}
+              >
+                <Icon className="size-3.5 shrink-0" aria-hidden />
+                {roomStatusMeta[choice].label}
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </div>

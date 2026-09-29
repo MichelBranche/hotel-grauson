@@ -39,6 +39,7 @@ export function ReservationDrawer({
   }
 
   const meta = reservationStatusMeta[reservation.status];
+  const nights = nightsBetween(reservation.checkIn, reservation.checkOut);
 
   return (
     <aside className="pms-card w-full p-5">
@@ -57,10 +58,17 @@ export function ReservationDrawer({
         <div className="flex items-center gap-3 text-[var(--pms-muted)]">
           <Phone className="size-4" /> {reservation.phone ?? "—"}
         </div>
-        <div className="flex items-center gap-3">
-          <CalendarDays className="size-4 text-[var(--pms-muted)]" />
-          {formatLong(reservation.checkIn)} – {formatLong(reservation.checkOut)}
-          <span className="text-[var(--pms-muted)]">· {nightsBetween(reservation.checkIn, reservation.checkOut)} notti</span>
+        <div className="flex items-start gap-3">
+          <CalendarDays className="mt-0.5 size-4 shrink-0 text-[var(--pms-muted)]" />
+          <p className="min-w-0">
+            {formatLong(reservation.checkIn)}
+            {" \u2013 "}
+            {formatLong(reservation.checkOut)}
+            <span className="whitespace-nowrap text-[var(--pms-muted)]">
+              {" \u00b7 "}
+              {nights} {nights === 1 ? "notte" : "notti"}
+            </span>
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <BedDouble className="size-4 text-[var(--pms-muted)]" />
