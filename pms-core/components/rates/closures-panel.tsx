@@ -7,6 +7,7 @@ import { createClosureAction, deleteRoomBlockAction, reopenRoomTypeAction, updat
 import { issuesByField } from "@pms-core/components/rates/types";
 import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
+import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { ConfirmDialog, Dialog } from "@pms-core/components/ui/dialog";
 import { EmptyState } from "@pms-core/components/ui/empty-state";
 import { Field, Input, Select } from "@pms-core/components/ui/input";
@@ -259,10 +260,18 @@ function ClosureForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Prima notte chiusa" error={errors.startDate}>
-            <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            <DatePicker
+              value={startDate}
+              rangeStart={startDate}
+              rangeEnd={endDate}
+              onChange={(value) => {
+                setStartDate(value);
+                if (!endDate || endDate < value) setEndDate(value);
+              }}
+            />
           </Field>
           <Field label="Ultima notte chiusa (inclusa)" error={errors.endDate}>
-            <Input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} />
+            <DatePicker value={endDate} min={startDate || undefined} rangeStart={startDate} rangeEnd={endDate} onChange={setEndDate} />
           </Field>
         </div>
         <p className="-mt-2 text-xs text-[var(--pms-muted)]">

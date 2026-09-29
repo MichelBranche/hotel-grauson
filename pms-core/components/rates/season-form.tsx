@@ -7,6 +7,7 @@ import { createSeasonAction, updateSeasonAction } from "@pms-core/actions/rates"
 import { Toggle } from "@pms-core/components/rates/plan-form";
 import { issuesByField, numberOrNull, numberText, type PlanView, type RoomTypeView, type SeasonView } from "@pms-core/components/rates/types";
 import { Button } from "@pms-core/components/ui/button";
+import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { Field, Input, Select } from "@pms-core/components/ui/input";
 import { nightsBetween } from "@pms-core/lib/dates";
 import { seasonInputSchema } from "@pms-core/lib/rates";
@@ -95,10 +96,24 @@ export function SeasonForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Prima notte" error={errors.startDate}>
-            <Input type="date" value={values.startDate} onChange={(event) => set("startDate", event.target.value)} />
+            <DatePicker
+              value={values.startDate}
+              rangeStart={values.startDate}
+              rangeEnd={values.endDate}
+              onChange={(value) => {
+                set("startDate", value);
+                if (!values.endDate || values.endDate < value) set("endDate", value);
+              }}
+            />
           </Field>
           <Field label="Ultima notte (inclusa)" error={errors.endDate}>
-            <Input type="date" value={values.endDate} min={values.startDate || undefined} onChange={(event) => set("endDate", event.target.value)} />
+            <DatePicker
+              value={values.endDate}
+              min={values.startDate || undefined}
+              rangeStart={values.startDate}
+              rangeEnd={values.endDate}
+              onChange={(value) => set("endDate", value)}
+            />
           </Field>
         </div>
         <p className="-mt-2 text-xs text-[var(--pms-muted)]">

@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowRight, CalendarDays, CalendarRange, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, Users } from "lucide-react";
 import { useId, useState } from "react";
 
+import { StayDateFields } from "@/components/booking/StayDateFields";
 import { MagneticButton } from "@/components/ui/MagneticButton";
 import { Reveal } from "@/components/ui/Reveal";
-import { buildBookingUrl, nextDayISO, todayISO } from "@/lib/booking";
+import { buildBookingUrl } from "@/lib/booking";
 import { hotel } from "@/lib/content";
 
 const fieldShell =
@@ -18,8 +19,7 @@ export function AvailabilityBar({
   layout?: "pinned" | "inline";
   defaultGuests?: number;
 }) {
-  const checkInId = useId();
-  const checkOutId = useId();
+  const datesId = useId();
   const guestsId = useId();
 
   const [checkIn, setCheckIn] = useState("");
@@ -65,58 +65,13 @@ export function AvailabilityBar({
           <span aria-hidden className="hidden h-12 w-px shrink-0 bg-[rgb(37_39_33_/_0.09)] lg:block" />
 
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-1 lg:flex-1">
-            <div className={fieldShell}>
-              <CalendarRange className="size-[17px] shrink-0 text-muted" strokeWidth={1.5} aria-hidden />
-              <span className="flex min-w-0 flex-col">
-                <label htmlFor={checkInId} className="text-[0.6875rem] text-muted">
-                  Check-in
-                </label>
-                <span className="relative">
-                  <input
-                    id={checkInId}
-                    type="date"
-                    value={checkIn}
-                    min={todayISO()}
-                    data-empty={checkIn === ""}
-                    onChange={(event) => {
-                      setCheckIn(event.target.value);
-                      if (checkOut && event.target.value && checkOut <= event.target.value) {
-                        setCheckOut(nextDayISO(event.target.value));
-                      }
-                    }}
-                    className="date-field w-full bg-transparent text-[0.8125rem] font-medium outline-none"
-                  />
-                  <span aria-hidden className="date-hint">
-                    Seleziona data
-                  </span>
-                </span>
-              </span>
-            </div>
-
-            <span aria-hidden className="hidden h-8 w-px shrink-0 bg-[rgb(37_39_33_/_0.07)] sm:block" />
-
-            <div className={fieldShell}>
-              <CalendarRange className="size-[17px] shrink-0 text-muted" strokeWidth={1.5} aria-hidden />
-              <span className="flex min-w-0 flex-col">
-                <label htmlFor={checkOutId} className="text-[0.6875rem] text-muted">
-                  Check-out
-                </label>
-                <span className="relative">
-                  <input
-                    id={checkOutId}
-                    type="date"
-                    value={checkOut}
-                    min={checkIn ? nextDayISO(checkIn) : todayISO()}
-                    data-empty={checkOut === ""}
-                    onChange={(event) => setCheckOut(event.target.value)}
-                    className="date-field w-full bg-transparent text-[0.8125rem] font-medium outline-none"
-                  />
-                  <span aria-hidden className="date-hint">
-                    Seleziona data
-                  </span>
-                </span>
-              </span>
-            </div>
+            <StayDateFields
+              idPrefix={datesId}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              onCheckIn={setCheckIn}
+              onCheckOut={setCheckOut}
+            />
 
             <span aria-hidden className="hidden h-8 w-px shrink-0 bg-[rgb(37_39_33_/_0.07)] sm:block" />
 

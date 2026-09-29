@@ -5,9 +5,14 @@ import { useState } from "react";
 
 import { submitContactRequestAction } from "@/app/contatti/actions";
 import { readContactRequest } from "@/lib/contact-request";
+import { DatePicker } from "@pms-core/components/ui/date-picker";
+import { addDaysISO, todayISO } from "@pms-core/lib/dates";
 
 const fieldClass =
   "mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-paper/70 px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40";
+
+const dateClass =
+  "mt-1.5 flex h-11 w-full items-center rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-paper/70 px-3 text-left text-[0.875rem] font-normal text-ink outline-none focus-visible:border-alpine/40 data-[state=open]:border-alpine/40 data-[empty=true]:text-muted";
 
 const empty = { firstName: "", lastName: "", email: "", phone: "", checkIn: "", checkOut: "", message: "" };
 
@@ -133,20 +138,36 @@ export function ContactRequestForm() {
         </label>
         <label className="text-[0.75rem] text-muted">
           Check-in
-          <input
-            type="date"
+          <DatePicker
+            tone="site"
+            clearable
+            placeholder="Facoltativa"
             value={guest.checkIn}
-            onChange={(event) => setGuest({ ...guest, checkIn: event.target.value })}
-            className={fieldClass}
+            min={todayISO()}
+            rangeStart={guest.checkIn}
+            rangeEnd={guest.checkOut}
+            onChange={(checkIn) =>
+              setGuest({
+                ...guest,
+                checkIn,
+                checkOut: checkIn && guest.checkOut && guest.checkOut <= checkIn ? addDaysISO(checkIn, 1) : guest.checkOut,
+              })
+            }
+            className={dateClass}
           />
         </label>
         <label className="text-[0.75rem] text-muted">
           Check-out
-          <input
-            type="date"
+          <DatePicker
+            tone="site"
+            clearable
+            placeholder="Facoltativa"
             value={guest.checkOut}
-            onChange={(event) => setGuest({ ...guest, checkOut: event.target.value })}
-            className={fieldClass}
+            min={guest.checkIn ? addDaysISO(guest.checkIn, 1) : addDaysISO(todayISO(), 1)}
+            rangeStart={guest.checkIn}
+            rangeEnd={guest.checkOut}
+            onChange={(checkOut) => setGuest({ ...guest, checkOut })}
+            className={dateClass}
           />
         </label>
         <label className="text-[0.75rem] text-muted sm:col-span-2">

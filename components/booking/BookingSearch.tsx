@@ -1,7 +1,7 @@
-import { ArrowRight, CalendarDays, CalendarRange, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, Users } from "lucide-react";
 
+import { StayDateFields } from "@/components/booking/StayDateFields";
 import { MagneticButton } from "@/components/ui/MagneticButton";
-import { nextDayISO, todayISO } from "@/lib/booking";
 import { hotel } from "@/lib/content";
 
 const fieldShell =
@@ -60,59 +60,14 @@ export function BookingSearch({
         <span aria-hidden className="hidden h-12 w-px shrink-0 bg-[rgb(37_39_33_/_0.09)] lg:block" />
 
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-1 lg:flex-1">
-          <div className={fieldShell}>
-            <CalendarRange className="size-[17px] shrink-0 text-muted" strokeWidth={1.5} aria-hidden />
-            <span className="flex min-w-0 flex-col">
-              <label htmlFor="booking-check-in" className="text-[0.6875rem] text-muted">
-                Check-in
-              </label>
-              <span className="relative">
-                <input
-                  id="booking-check-in"
-                  type="date"
-                  required
-                  value={checkIn}
-                  min={todayISO()}
-                  data-empty={checkIn === ""}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    onCheckIn(value);
-                    if (checkOut && value && checkOut <= value) onCheckOut(nextDayISO(value));
-                  }}
-                  className="date-field w-full bg-transparent text-[0.8125rem] font-medium outline-none"
-                />
-                <span aria-hidden className="date-hint">
-                  Seleziona data
-                </span>
-              </span>
-            </span>
-          </div>
-
-          <span aria-hidden className="hidden h-8 w-px shrink-0 bg-[rgb(37_39_33_/_0.07)] sm:block" />
-
-          <div className={fieldShell}>
-            <CalendarRange className="size-[17px] shrink-0 text-muted" strokeWidth={1.5} aria-hidden />
-            <span className="flex min-w-0 flex-col">
-              <label htmlFor="booking-check-out" className="text-[0.6875rem] text-muted">
-                Check-out
-              </label>
-              <span className="relative">
-                <input
-                  id="booking-check-out"
-                  type="date"
-                  required
-                  value={checkOut}
-                  min={checkIn ? nextDayISO(checkIn) : todayISO()}
-                  data-empty={checkOut === ""}
-                  onChange={(event) => onCheckOut(event.target.value)}
-                  className="date-field w-full bg-transparent text-[0.8125rem] font-medium outline-none"
-                />
-                <span aria-hidden className="date-hint">
-                  Seleziona data
-                </span>
-              </span>
-            </span>
-          </div>
+          <StayDateFields
+            idPrefix="booking"
+            required
+            checkIn={checkIn}
+            checkOut={checkOut}
+            onCheckIn={onCheckIn}
+            onCheckOut={onCheckOut}
+          />
 
           <span aria-hidden className="hidden h-8 w-px shrink-0 bg-[rgb(37_39_33_/_0.07)] sm:block" />
 

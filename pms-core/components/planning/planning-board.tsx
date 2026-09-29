@@ -21,6 +21,7 @@ import { MoveDialog } from "@pms-core/components/planning/move-dialog";
 import { ReservationDrawer } from "@pms-core/components/planning/reservation-drawer";
 import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
+import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { addDaysISO, eachISODate, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
 import { planningColor } from "@pms-core/lib/planning-color";
 import { formatMoneyExact } from "@pms-core/lib/money";
@@ -364,16 +365,18 @@ export function PlanningBoard({
             </button>
           </div>
           <p className="text-sm font-medium">{formatRange(from, addDaysISO(to, -1))}</p>
-          <input
-            type="date"
-            value={rangePicker}
-            onChange={(event) => {
-              setRangePicker(event.target.value);
-              setAnchor(event.target.value);
-            }}
-            className="h-9 rounded-full border border-[var(--pms-line)] bg-white/70 px-3 text-sm"
-            aria-label="Vai alla data"
-          />
+          <div className="w-auto">
+            <DatePicker
+              value={rangePicker}
+              onChange={(value) => {
+                setRangePicker(value);
+                setAnchor(value);
+              }}
+              placeholder="Vai alla data"
+              aria-label="Vai alla data"
+              className="h-9 w-auto gap-2 rounded-full bg-white/70 px-3"
+            />
+          </div>
           <div className="ml-auto flex rounded-full bg-white/70 p-1 text-xs">
             {(["day", "week", "twoweeks", "month"] as const).map((item) => (
               <button
