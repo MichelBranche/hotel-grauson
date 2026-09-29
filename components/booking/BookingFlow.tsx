@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { BookingOffers } from "@/components/booking/BookingOffers";
 import { BookingSearch } from "@/components/booking/BookingSearch";
-import { catalogForType, preferRate, rateLabel } from "@/lib/booking-catalog";
+import { catalogForType, rateLabel } from "@/lib/booking-catalog";
 import { hotel } from "@/lib/content";
 import { publicAvailabilityAction, publicCreateReservationAction } from "@pms-core/actions/booking";
 import { formatRange, nightsBetween } from "@pms-core/lib/dates";
@@ -43,8 +43,8 @@ export function BookingFlow({
   const [offers, setOffers] = useState(initialOffers);
   const [notices, setNotices] = useState(initialNotices);
   const [searched, setSearched] = useState(initialOffers.length > 0 || initialNotices.length > 0);
-  const [roomTypeId, setRoomTypeId] = useState(initialOffers[0]?.roomTypeId ?? "");
-  const [ratePlanId, setRatePlanId] = useState(preferRate(initialOffers[0]?.ratePlans ?? [])?.id ?? "");
+  const [roomTypeId, setRoomTypeId] = useState("");
+  const [ratePlanId, setRatePlanId] = useState("");
   const [guest, setGuest] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [error, setError] = useState<string | null>(initialError);
   const [code, setCode] = useState<string | null>(null);
@@ -76,10 +76,8 @@ export function BookingFlow({
       }
       setOffers(result.data.offers);
       setNotices(result.data.notices);
-      const first = result.data.offers[0];
-      const preferred = first ? preferRate(first.ratePlans) : undefined;
-      setRoomTypeId(first?.roomTypeId ?? "");
-      setRatePlanId(preferred?.id ?? "");
+      setRoomTypeId("");
+      setRatePlanId("");
       document.getElementById("disponibilita")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch {
       setSearched(true);
@@ -178,14 +176,22 @@ export function BookingFlow({
               roomTypeId={roomTypeId}
               ratePlanId={ratePlanId}
               onSelect={(nextType, nextRate) => {
+                const opening = roomTypeId === "";
                 setRoomTypeId(nextType);
                 setRatePlanId(nextRate);
+                if (opening) {
+                  requestAnimationFrame(() => {
+                    document.getElementById("richiesta")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  });
+                }
               }}
             />
 
             {selected && rate && catalog ? (
               <form
-                className="rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-surface p-5 shadow-[var(--shadow-soft)] sm:p-7"
+                id="richiesta"
+                aria-labelledby="richiesta-title"
+                className="scroll-mt-28 rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-paper p-5 shadow-[var(--shadow-soft)] sm:p-7"
                 noValidate
                 onSubmit={async (event) => {
                   event.preventDefault();
@@ -228,10 +234,15 @@ export function BookingFlow({
                   }
                 }}
               >
-                <p className="eyebrow text-muted">I vostri recapiti</p>
-                <h3 className="display-md mt-2">Lasciate i dati. Confermiamo noi.</h3>
-                <p className="mt-3 max-w-[42ch] text-[0.875rem] leading-relaxed text-muted">
-                  {catalog.label} · {rateLabel(rate.name)} · {formatMoney(rate.total)} — non è un pagamento online.
+                <p className="eyebrow text-muted">Richiesta, non prenotazione</p>
+                <h3 id="richiesta-title" className="display-md mt-2 max-w-[18ch]">
+                  Chiedete questa camera
+                </h3>
+                <p className="mt-3 max-w-[46ch] text-[0.875rem] leading-relaxed text-muted">
+                  Nome, cognome ed email servono perché la reception vi risponda. La camera non è confermata finché non vi sentiamo, e qui non si paga.
+                </p>
+                <p className="mt-4 text-[0.875rem] text-ink">
+                  {catalog.label} · {rateLabel(rate.name)} · {formatMoney(rate.total)}
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -243,7 +254,7 @@ export function BookingFlow({
                       autoComplete="given-name"
                       value={guest.firstName}
                       onChange={(event) => setGuest({ ...guest, firstName: event.target.value })}
-                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-paper/70 px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
+                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-surface px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
                     />
                   </label>
                   <label className="text-[0.75rem] text-muted">
@@ -254,7 +265,7 @@ export function BookingFlow({
                       autoComplete="family-name"
                       value={guest.lastName}
                       onChange={(event) => setGuest({ ...guest, lastName: event.target.value })}
-                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-paper/70 px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
+                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-surface px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
                     />
                   </label>
                   <label className="text-[0.75rem] text-muted">
@@ -266,7 +277,7 @@ export function BookingFlow({
                       autoComplete="email"
                       value={guest.email}
                       onChange={(event) => setGuest({ ...guest, email: event.target.value })}
-                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-paper/70 px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
+                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-surface px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
                     />
                   </label>
                   <label className="text-[0.75rem] text-muted">
@@ -276,7 +287,7 @@ export function BookingFlow({
                       autoComplete="tel"
                       value={guest.phone}
                       onChange={(event) => setGuest({ ...guest, phone: event.target.value })}
-                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-paper/70 px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
+                      className="mt-1.5 h-11 w-full rounded-[16px] border border-[rgb(37_39_33_/_0.08)] bg-surface px-3 text-[0.875rem] text-ink outline-none focus:border-alpine/40"
                     />
                   </label>
                 </div>
@@ -287,16 +298,23 @@ export function BookingFlow({
                   </p>
                 ) : null}
 
-                <button
-                  type="submit"
-                  disabled={sending}
-                  aria-busy={sending || undefined}
-                  className="mt-7 h-[3.125rem] rounded-full bg-accent px-7 text-[0.8125rem] font-medium text-surface transition-colors duration-500 hover:bg-accent-hover disabled:opacity-60"
-                >
-                  {sending ? "Invio…" : "Invia la richiesta"}
-                </button>
+                <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    aria-busy={sending || undefined}
+                    className="h-[3.125rem] rounded-full bg-accent px-7 text-[0.8125rem] font-medium text-surface transition-colors duration-500 hover:bg-accent-hover disabled:opacity-60"
+                  >
+                    {sending ? "Invio…" : "Invia la richiesta"}
+                  </button>
+                  <p className="text-[0.8125rem] text-muted">Nessun addebito. Pagamento in locanda.</p>
+                </div>
               </form>
-            ) : null}
+            ) : (
+              <p className="max-w-[46ch] px-1 text-[0.875rem] leading-relaxed text-muted">
+                Scegliete una tariffa per chiedere la camera. Non la prenota: vi confermiamo noi, e si paga in locanda.
+              </p>
+            )}
           </div>
         ) : null}
       </div>
