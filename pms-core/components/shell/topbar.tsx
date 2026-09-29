@@ -81,7 +81,7 @@ export function Topbar({
       >
         <Bell className="size-4" />
         {unread > 0 ? (
-          <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[var(--pms-alpine)]" />
+          <span className="pms-bell-unread absolute top-1.5 right-1.5 size-2 rounded-full" />
         ) : null}
       </button>
 
