@@ -47,7 +47,7 @@ Alias: `@/*` root del sito, `@pms-core/*` modulo PMS.
 cp .env.example .env
 ```
 
-In `.env` (solo in locale, non va committato) imposta `DATABASE_URL` con la session URI Postgres di Supabase e un `AUTH_SECRET` lungo e casuale. Per il primo seed imposta anche `SEED_OWNER_PASSWORD` (password temporanea, da cambiare dopo il primo accesso).
+In `.env` (solo in locale, non va committato) imposta `DATABASE_URL` con la session URI Postgres di Supabase e un `AUTH_SECRET` lungo e casuale. Per il seed imposta `SEED_DEVELOPER_EMAIL` (l'accesso attuale) e `SEED_OWNER_EMAIL` (`info@locandagrauson.it`). La password serve solo se quell'utente non esiste ancora.
 
 ```bash
 npm install
@@ -57,7 +57,7 @@ npm run db:seed
 npm run dev
 ```
 
-Apri [http://localhost:3000](http://localhost:3000). Il login PMS usa l'email e la password definite in `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD`. La password non è nel repository.
+Apri [http://localhost:3000](http://localhost:3000). Il login PMS accetta l'email developer e `info@locandagrauson.it`. Le password non sono nel repository.
 
 ## Route
 
@@ -83,7 +83,7 @@ npm run db:seed:demo
 npm run db:studio
 ```
 
-`npm run db:seed` crea l'organizzazione, la property, un solo utente OWNER e la «Tariffa standard» (STD) vuota. Camere, prezzi, stagioni e prenotazioni restano da inserire in `/pms/rooms` e `/pms/rates`. `npm run db:seed:demo` sostituisce i dati con un dataset fittizio ed è solo per uso locale.
+`npm run db:seed` crea l'organizzazione, la property, un utente DEVELOPER, un utente OWNER (`info@locandagrauson.it` se non imposti un'altra email) e la «Tariffa standard» (STD) vuota. Se l'email developer esiste già, il ruolo diventa DEVELOPER e la password resta. Camere, prezzi, stagioni e prenotazioni restano da inserire in `/pms/rooms` e `/pms/rates`. `npm run db:seed:demo` sostituisce i dati con un dataset fittizio ed è solo per uso locale.
 
 `npm run db:migrate` (`prisma migrate dev`) serve alle modifiche successive dello schema. Il primo allineamento su Supabase è `migrate deploy`: la migration `init_postgres` è già nel repo e Supabase non ospita lo shadow database di Prisma. Non eseguire `npm run db:reset` sul progetto Supabase: cancella i dati.
 
@@ -92,7 +92,9 @@ npm run db:studio
 ```
 DATABASE_URL="postgresql://postgres:PASSWORD@db.wmtuojolspyidnhhyruc.supabase.co:5432/postgres"
 AUTH_SECRET="long-random-string"
-SEED_OWNER_EMAIL="owner@grauson.local"
+SEED_DEVELOPER_EMAIL="developer@grauson.local"
+SEED_DEVELOPER_PASSWORD="set-a-temporary-password"
+SEED_OWNER_EMAIL="info@locandagrauson.it"
 SEED_OWNER_PASSWORD="set-a-temporary-password"
 ```
 

@@ -2,15 +2,53 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { propertyConfig } from "../config/property";
-import { assertPostgresUrl, loadLocalEnv, ownerSeedInput, requireOwnerPassword } from "./env";
+import { assertPostgresUrl, developerSeedInput, loadLocalEnv, ownerSeedInput, requireSeedPassword } from "./env";
 
 loadLocalEnv();
 assertPostgresUrl();
 
 const prisma = new PrismaClient();
 
+async function ensureUser(input: {
+  organizationId: string;
+  propertyId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "DEVELOPER" | "OWNER";
+  passwordEnv: "SEED_DEVELOPER_PASSWORD" | "SEED_OWNER_PASSWORD";
+}) {
+  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  if (!existing) {
+    const passwordHash = await bcrypt.hash(requireSeedPassword(input.passwordEnv), 12);
+    await prisma.user.create({
+      data: {
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        email: input.email,
+        passwordHash,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        role: input.role,
+      },
+    });
+    console.log(`${input.role} created for ${input.email}. Password is ${input.passwordEnv} and is not printed.`);
+    return;
+  }
+  if (existing.role !== input.role) {
+    await prisma.user.update({ where: { id: existing.id }, data: { role: input.role } });
+    console.log(`${input.email} is now ${input.role}. Password was not changed.`);
+    return;
+  }
+  console.log(`${input.email} already exists as ${input.role}. Password was not changed.`);
+}
+
 async function main() {
-  const { email, firstName, lastName } = ownerSeedInput();
+  const developer = developerSeedInput();
+  const owner = ownerSeedInput();
+  if (developer.email === owner.email) {
+    throw new Error("SEED_DEVELOPER_EMAIL and SEED_OWNER_EMAIL must be different.");
+  }
 
   const organization = await prisma.organization.upsert({
     where: { slug: propertyConfig.organizationSlug },
@@ -55,26 +93,21 @@ async function main() {
     console.log("Default rate plan «Tariffa standard» ready.");
   }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (!existing) {
-    const passwordHash = await bcrypt.hash(requireOwnerPassword(), 12);
-    await prisma.user.create({
-      data: {
-        organizationId: organization.id,
-        propertyId: property.id,
-        email,
-        passwordHash,
-        firstName,
-        lastName,
-        role: "OWNER",
-      },
-    });
-    console.log("Clean seed completed. Owner created.");
-    console.log("Password is SEED_OWNER_PASSWORD from the environment and is not printed. Change it after the first login.");
-  } else {
-    console.log("Clean seed completed. Owner already exists; password was not changed.");
-  }
-  console.log(`Owner email: ${email}`);
+  await ensureUser({
+    organizationId: organization.id,
+    propertyId: property.id,
+    ...developer,
+    role: "DEVELOPER",
+    passwordEnv: "SEED_DEVELOPER_PASSWORD",
+  });
+  await ensureUser({
+    organizationId: organization.id,
+    propertyId: property.id,
+    ...owner,
+    role: "OWNER",
+    passwordEnv: "SEED_OWNER_PASSWORD",
+  });
+  console.log("Clean seed completed.");
 }
 
 main()

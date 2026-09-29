@@ -80,6 +80,7 @@ const MANAGER: Permission[] = [
 
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   OWNER: ALL,
+  DEVELOPER: ALL,
   ADMIN: ALL,
   MANAGER,
   RECEPTIONIST: FRONT_DESK,
@@ -98,6 +99,11 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
 
 export function can(role: UserRole, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role].includes(permission);
+}
+
+/** Same gate as the owner: a checked-in stay can be cancelled only by these roles. */
+export function canForceCancel(role: UserRole) {
+  return role === "DEVELOPER" || role === "OWNER" || role === "ADMIN";
 }
 
 export function permissionsFor(role: UserRole): readonly Permission[] {

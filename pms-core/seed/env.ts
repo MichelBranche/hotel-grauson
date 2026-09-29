@@ -20,23 +20,47 @@ export function assertPostgresUrl() {
   }
 }
 
-export function ownerSeedInput() {
-  const email = (process.env.SEED_OWNER_EMAIL || "owner@grauson.local").trim().toLowerCase();
-  const firstName = (process.env.SEED_OWNER_FIRST_NAME || "Owner").trim();
-  const lastName = (process.env.SEED_OWNER_LAST_NAME || "Grauson").trim();
+function accountInput(
+  emailKey: string,
+  firstKey: string,
+  lastKey: string,
+  defaults: { email: string; firstName: string; lastName: string },
+) {
+  const email = (process.env[emailKey] || defaults.email).trim().toLowerCase();
+  const firstName = (process.env[firstKey] || defaults.firstName).trim();
+  const lastName = (process.env[lastKey] || defaults.lastName).trim();
   if (!email.includes("@")) {
-    throw new Error("Set SEED_OWNER_EMAIL to the owner login email.");
+    throw new Error(`Set ${emailKey} to a login email.`);
   }
   return { email, firstName, lastName };
 }
 
-/** Temporary owner password from the environment. Never log the value. */
-export function requireOwnerPassword() {
-  const password = process.env.SEED_OWNER_PASSWORD ?? "";
+export function developerSeedInput() {
+  return accountInput("SEED_DEVELOPER_EMAIL", "SEED_DEVELOPER_FIRST_NAME", "SEED_DEVELOPER_LAST_NAME", {
+    email: "developer@grauson.local",
+    firstName: "Developer",
+    lastName: "Grauson",
+  });
+}
+
+export function ownerSeedInput() {
+  return accountInput("SEED_OWNER_EMAIL", "SEED_OWNER_FIRST_NAME", "SEED_OWNER_LAST_NAME", {
+    email: "info@locandagrauson.it",
+    firstName: "Locanda",
+    lastName: "Grauson",
+  });
+}
+
+/** Temporary password from the environment. Never log the value. Required only when that user does not exist yet. */
+export function requireSeedPassword(envName: "SEED_DEVELOPER_PASSWORD" | "SEED_OWNER_PASSWORD") {
+  const password = process.env[envName] ?? "";
   if (!password || password === PASSWORD_PLACEHOLDER || password.length < 8) {
-    throw new Error(
-      "Set SEED_OWNER_PASSWORD to a temporary password of at least 8 characters. Change it after the first login.",
-    );
+    throw new Error(`Set ${envName} to a temporary password of at least 8 characters. Change it after the first login.`);
   }
   return password;
+}
+
+/** Temporary owner password from the environment. Never log the value. */
+export function requireOwnerPassword() {
+  return requireSeedPassword("SEED_OWNER_PASSWORD");
 }
