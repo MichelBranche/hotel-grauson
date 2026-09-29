@@ -47,7 +47,7 @@ export async function loginAction(input: { email: string; password: string }) {
     try {
       await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     } catch {
-      // Read-only demo snapshots should still sign in.
+      // A failed timestamp write must not block a valid sign-in.
     }
     const jar = await cookies();
     const options = sessionCookieOptions();

@@ -5,14 +5,13 @@ import { useState } from "react";
 
 import { loginAction } from "@pms-core/actions/auth";
 import { branding } from "@pms-core/config/branding";
-import { DEMO_LOGIN } from "@pms-core/config/demo";
 import { Button } from "@pms-core/components/ui/button";
 import { Field, Input } from "@pms-core/components/ui/input";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState<string>(DEMO_LOGIN.email);
-  const [password, setPassword] = useState<string>(DEMO_LOGIN.password);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -48,7 +47,7 @@ export default function LoginPage() {
           <p className="text-xs tracking-[0.22em] text-[var(--pms-muted)]">PROPERTY MANAGEMENT</p>
           <h1 className="mt-2 font-[family-name:var(--font-sora)] text-3xl">Accedi al PMS</h1>
           <p className="mt-2 text-sm text-[var(--pms-muted)]">
-            Demo operativa: le credenziali della reception sono già compilate. Entra per esplorare planning, camere e housekeeping.
+            Accedi con l&apos;account owner della struttura.
           </p>
           <div className="mt-8 grid gap-4">
             <Field label="Email">

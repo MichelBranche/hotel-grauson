@@ -1,16 +1,11 @@
-/** Edge-safe demo defaults. Do not import Node filesystem APIs here. */
+/** Session signing. AUTH_SECRET must be set in the environment. */
 
-export const DEMO_AUTH_SECRET = "grauson-pms-demo-secret-not-for-production";
-
-export const DEMO_LOGIN = {
-  email: "michel.branche@grauson.local",
-  password: "Grauson2026!",
-} as const;
+const AUTH_SECRET_PLACEHOLDER = "replace-with-a-long-random-secret";
 
 export function getAuthSecret() {
-  return process.env["AUTH_SECRET"] || DEMO_AUTH_SECRET;
-}
-
-export function isDemoRuntime() {
-  return Boolean(process.env.VERCEL) || process.env.PMS_DEMO_MODE === "1";
+  const secret = process.env["AUTH_SECRET"]?.trim() ?? "";
+  if (!secret || secret === AUTH_SECRET_PLACEHOLDER) {
+    throw new Error("Set AUTH_SECRET to a long random string. Do not use the .env.example placeholder.");
+  }
+  return secret;
 }
