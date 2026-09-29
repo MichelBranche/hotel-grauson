@@ -52,6 +52,7 @@ export function LifecycleActions({
   businessToday,
   onModify,
   onChanged,
+  payAtProperty = false,
 }: {
   reservation: {
     id: string;
@@ -69,6 +70,8 @@ export function LifecycleActions({
   businessToday: string;
   onModify?: () => void;
   onChanged: (patch?: StayPatch) => void;
+  /** Website option that asked to pay at the property. Uses the same confirm and cancel actions. */
+  payAtProperty?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -87,6 +90,7 @@ export function LifecycleActions({
   const departure = earlyCheckout(reservation.checkIn, reservation.checkOut, businessToday || todayISO());
   const blocked = checkInBlockMessage({ number: reservation.roomNumber, status: reservation.roomStatus });
   const actions = actionsFor(reservation.status).filter((action) => allowed(action, permissions, Boolean(onModify)));
+  const webRequest = payAtProperty && reservation.status === "OPTION";
 
   async function finish(result: { ok: true; data: { message: string; housekeepingCreated: boolean; status: ReservationStatus; roomStatus: RoomStatus; total: number; checkOut: string; nights: number } } | { ok: false; error: string }) {
     setPending(false);
@@ -123,10 +127,23 @@ export function LifecycleActions({
         <p className="text-sm text-[var(--pms-muted)]">Stato definitivo: si possono aggiornare solo le note.</p>
       ) : null}
       {blocked && actions.includes("check-in") ? <p className="text-sm text-[#8a3b3b]">{blocked}</p> : null}
+      {webRequest ? (
+        <p className="text-sm text-[var(--pms-muted)]">
+          Conferma il soggiorno: il pagamento si fa in reception. Rifiuta: la camera torna libera.
+        </p>
+      ) : null}
       {actions.map((action) => (
         <Button
           key={action}
-          variant={action === "cancel" || action === "no-show" ? "ghost" : action === "check-in" || action === "check-out" || action === "confirm" ? "default" : "outline"}
+          variant={
+            webRequest && action === "cancel"
+              ? "danger"
+              : action === "cancel" || action === "no-show"
+                ? "ghost"
+                : action === "check-in" || action === "check-out" || action === "confirm"
+                  ? "default"
+                  : "outline"
+          }
           pending={busy === action}
           disabled={pending || (action === "check-in" && Boolean(blocked)) || (action === "extra" && extras.length === 0)}
           onClick={() => {
@@ -138,7 +155,7 @@ export function LifecycleActions({
             else if (action === "no-show") setConfirm("no-show");
             else if (action === "cancel") {
               setForce(false);
-              setReason("");
+              setReason(webRequest ? "Richiesta web rifiutata" : "");
               setCancelOpen(true);
             } else if (action === "extra") setExtraOpen(true);
             else if (action === "payment") {
@@ -147,7 +164,7 @@ export function LifecycleActions({
             }
           }}
         >
-          {label(action, extras.length === 0)}
+          {label(action, extras.length === 0, webRequest)}
         </Button>
       ))}
       {reservation.status === "CHECKED_IN" && permissions.canForceCancel ? (
@@ -189,11 +206,13 @@ export function LifecycleActions({
       <Dialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
-        title={force ? "Annullare un soggiorno già iniziato?" : "Cancellare la prenotazione?"}
+        title={force ? "Annullare un soggiorno già iniziato?" : webRequest ? "Rifiutare la richiesta?" : "Cancellare la prenotazione?"}
         description={
           force
             ? "Solo titolare o amministratore. La camera torna da pulire e il motivo resta nelle note."
-            : `${reservation.code} torna subito in vendita. Il motivo resta nelle note. Le prenotazioni già incassate non vengono rimborsate da qui.`
+            : webRequest
+              ? "La camera torna libera. Il motivo resta nelle note."
+              : `${reservation.code} torna subito in vendita. Il motivo resta nelle note. Le prenotazioni già incassate non vengono rimborsate da qui.`
         }
       >
         <form
@@ -213,7 +232,7 @@ export function LifecycleActions({
               Indietro
             </Button>
             <Button type="submit" variant="danger" pending={pending} disabled={reason.trim().length < 3}>
-              {force ? "Annulla il soggiorno" : "Cancella prenotazione"}
+              {force ? "Annulla il soggiorno" : webRequest ? "Rifiuta la richiesta" : "Cancella prenotazione"}
             </Button>
           </div>
         </form>
@@ -308,7 +327,7 @@ function allowed(action: DeskAction, permissions: DeskPermissions, canOpenModify
   return false;
 }
 
-function label(action: DeskAction, noExtras: boolean) {
+function label(action: DeskAction, noExtras: boolean, webRequest = false) {
   switch (action) {
     case "confirm":
       return "Conferma";
@@ -321,7 +340,7 @@ function label(action: DeskAction, noExtras: boolean) {
     case "modify":
       return "Modifica";
     case "cancel":
-      return "Cancella";
+      return webRequest ? "Rifiuta" : "Cancella";
     case "no-show":
       return "No-show";
     case "extra":

@@ -3,26 +3,68 @@ import Link from "next/link";
 import { requirePermission } from "@pms-core/auth/guards";
 import { reservationStatusMeta } from "@pms-core/config/status";
 import { StatusBadge } from "@pms-core/components/ui/badge";
+import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
 import { reservationService } from "@pms-core/services/reservation.service";
 import { toISODate } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
-import { guestDisplay } from "@pms-core/lib/utils";
+import { cn, guestDisplay } from "@pms-core/lib/utils";
+
+function listHref(room: string | undefined, queue: boolean) {
+  const params = new URLSearchParams();
+  if (room) params.set("room", room);
+  if (queue) params.set("coda", "web");
+  const query = params.toString();
+  return query ? `/pms/reservations?${query}` : "/pms/reservations";
+}
 
 export default async function ReservationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ room?: string }>;
+  searchParams: Promise<{ room?: string; coda?: string }>;
 }) {
   const session = await requirePermission("reservations.read");
-  const { room } = await searchParams;
-  const reservations = (await reservationService.list(session.propertyId)).filter((item) =>
+  const { room, coda } = await searchParams;
+  const queue = coda === "web";
+  const listed = (await reservationService.list(session.propertyId)).filter((item) =>
     room ? item.room.number === room : true,
   );
+  const webRequests = listed.filter((item) => isPayAtPropertyRequest(item));
+  const reservations = queue ? webRequests : listed;
 
   return (
     <div>
-      <h1 className="text-2xl">Prenotazioni</h1>
-      {room ? <p className="mt-1 text-sm text-[var(--pms-muted)]">Filtro camera {room}</p> : null}
+      <h1 className="text-2xl">{queue ? "Richieste web" : "Prenotazioni"}</h1>
+      <p className="mt-1 text-sm text-[var(--pms-muted)]">
+        {room ? `Filtro camera ${room}. ` : null}
+        {queue ? "Soggiorni dal sito in attesa. Il pagamento si fa in reception." : "Tutte le prenotazioni della locanda."}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2 text-sm">
+        <Link
+          href={listHref(room, false)}
+          className={cn(
+            "rounded-full px-3 py-1",
+            queue ? "text-[var(--pms-muted)] hover:bg-[var(--pms-surface-dark)]" : "bg-[var(--pms-alpine)] text-[var(--pms-surface)]",
+          )}
+          aria-current={queue ? undefined : "page"}
+        >
+          Tutte
+        </Link>
+        <Link
+          href={listHref(room, true)}
+          className={cn(
+            "rounded-full px-3 py-1",
+            queue ? "bg-[var(--pms-alpine)] text-[var(--pms-surface)]" : "text-[var(--pms-muted)] hover:bg-[var(--pms-surface-dark)]",
+          )}
+          aria-current={queue ? "page" : undefined}
+        >
+          Richieste web{webRequests.length ? ` · ${webRequests.length}` : ""}
+        </Link>
+      </div>
+      {reservations.length === 0 ? (
+        <div className="pms-card mt-5 px-4 py-8 text-sm text-[var(--pms-muted)]">
+          {queue ? "Nessuna richiesta web in attesa." : "Nessuna prenotazione."}
+        </div>
+      ) : (
       <div className="pms-card mt-5 overflow-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="text-xs text-[var(--pms-muted)]">
@@ -49,7 +91,10 @@ export default async function ReservationsPage({
                   {toISODate(reservation.checkIn)} → {toISODate(reservation.checkOut)}
                 </td>
                 <td className="px-4 py-3">
-                  <StatusBadge label={reservationStatusMeta[reservation.status].label} tone={reservationStatusMeta[reservation.status].tone} />
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <StatusBadge label={reservationStatusMeta[reservation.status].label} tone={reservationStatusMeta[reservation.status].tone} />
+                    {isPayAtPropertyRequest(reservation) ? <StatusBadge label="Richiesta web" tone="amber" /> : null}
+                  </span>
                 </td>
                 <td className="px-4 py-3">{formatMoney(reservation.total, reservation.currency)}</td>
               </tr>
@@ -57,6 +102,7 @@ export default async function ReservationsPage({
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

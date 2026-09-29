@@ -55,6 +55,7 @@ export function Sidebar({
   mobileOpen,
   collapsed,
   pendingHref,
+  webRequestCount = 0,
   onNavigateStart,
   onNavigate,
 }: {
@@ -62,6 +63,7 @@ export function Sidebar({
   mobileOpen?: boolean;
   collapsed?: boolean;
   pendingHref?: string | null;
+  webRequestCount?: number;
   onNavigateStart?: (href: string | null) => void;
   onNavigate?: () => void;
 }) {
@@ -114,15 +116,17 @@ export function Sidebar({
             .filter((item) => can(role, item.permission as Permission))
             .map((item) => {
               const Icon = icons[item.icon];
-              const active = pendingHref ? pendingHref === item.href : isNavActive(pathname, item.href);
+              const queue = item.href === "/pms/reservations" && webRequestCount > 0;
+              const href = queue ? "/pms/reservations?coda=web" : item.href;
+              const active = pendingHref ? pendingHref === href : isNavActive(pathname, item.href);
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   aria-current={isNavActive(pathname, item.href) ? "page" : undefined}
-                  title={collapsed ? item.label : undefined}
+                  title={collapsed ? (queue ? `${item.label}, ${webRequestCount} richieste web` : item.label) : undefined}
                   onClick={(event) => {
-                    if (isPlainClick(event)) onNavigateStart?.(isNavActive(pathname, item.href) ? null : item.href);
+                    if (isPlainClick(event)) onNavigateStart?.(isNavActive(pathname, item.href) ? null : href);
                     onNavigate?.();
                   }}
                   className={cn(
@@ -133,7 +137,19 @@ export function Sidebar({
                   )}
                 >
                   <Icon className="size-4 shrink-0" strokeWidth={1.7} />
-                  <span className="pms-nav-label whitespace-nowrap">{item.label}</span>
+                  <span className="pms-nav-label flex items-center gap-2 whitespace-nowrap">
+                    {item.label}
+                    {queue ? (
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 text-[11px] tabular-nums",
+                          active ? "bg-[rgb(37_39_33_/_0.08)]" : "bg-white/20",
+                        )}
+                      >
+                        {webRequestCount}
+                      </span>
+                    ) : null}
+                  </span>
                 </Link>
               );
             })}
