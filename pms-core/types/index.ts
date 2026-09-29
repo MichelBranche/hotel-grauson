@@ -64,6 +64,10 @@ export type PlanningData = {
   to: string;
   rooms: PlanningRoom[];
   reservations: PlanningReservation[];
+  /** Dated room closures; endDate is the last closed night. */
+  blocks: { id: string; roomId: string; startDate: string; endDate: string; reason: string }[];
+  /** Nights a whole room type is closed for sale (Inventory.closed). */
+  closedNights: { roomTypeId: string; date: string }[];
 };
 
 export type AvailabilityOffer = {
@@ -80,7 +84,13 @@ export type AvailabilityOffer = {
     nightly: number;
     total: number;
     minimumStay: number;
+    nights: { date: string; price: number; season: string | null }[];
   }[];
+};
+
+export type AvailabilityResult = {
+  offers: AvailabilityOffer[];
+  unavailable: { roomTypeId: string; roomTypeName: string; reason: string; guestVisible: boolean }[];
 };
 
 export type ReservationDetail = Reservation & {

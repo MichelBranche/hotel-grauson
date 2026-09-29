@@ -75,6 +75,7 @@ npm run dev
 npm run build
 npm run lint
 npm run typecheck
+npm test
 npm run db:generate
 npm run db:migrate:deploy
 npm run db:seed
@@ -82,7 +83,7 @@ npm run db:seed:demo
 npm run db:studio
 ```
 
-`npm run db:seed` crea l'organizzazione, la property e un solo utente OWNER. Camere, tariffe e prenotazioni restano vuote. `npm run db:seed:demo` sostituisce i dati con un dataset fittizio ed è solo per uso locale.
+`npm run db:seed` crea l'organizzazione, la property, un solo utente OWNER e la «Tariffa standard» (STD) vuota. Camere, prezzi, stagioni e prenotazioni restano da inserire in `/pms/rooms` e `/pms/rates`. `npm run db:seed:demo` sostituisce i dati con un dataset fittizio ed è solo per uso locale.
 
 `npm run db:migrate` (`prisma migrate dev`) serve alle modifiche successive dello schema. Il primo allineamento su Supabase è `migrate deploy`: la migration `init_postgres` è già nel repo e Supabase non ospita lo shadow database di Prisma. Non eseguire `npm run db:reset` sul progetto Supabase: cancella i dati.
 

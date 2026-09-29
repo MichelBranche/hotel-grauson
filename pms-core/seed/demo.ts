@@ -35,6 +35,9 @@ async function main() {
   await prisma.reservationGuest.deleteMany();
   await prisma.reservation.deleteMany();
   await prisma.rate.deleteMany();
+  await prisma.rateSeasonPrice.deleteMany();
+  await prisma.rateSeason.deleteMany();
+  await prisma.roomBlock.deleteMany();
   await prisma.ratePlanPrice.deleteMany();
   await prisma.inventory.deleteMany();
   await prisma.extra.deleteMany();
@@ -297,6 +300,24 @@ async function main() {
     ),
   );
   const bar = plans[0];
+
+  // Sample season for QA: Christmas on the Best Available Rate, +35% and minimum 3 nights.
+  const now = new Date();
+  const xmasYear = now.getMonth() === 11 && now.getDate() > 20 ? now.getFullYear() + 1 : now.getFullYear();
+  const barPrices = await prisma.ratePlanPrice.findMany({ where: { ratePlanId: bar.id } });
+  await prisma.rateSeason.create({
+    data: {
+      propertyId: property.id,
+      ratePlanId: bar.id,
+      name: "Natale",
+      startDate: d(`${xmasYear}-12-20`),
+      endDate: d(`${xmasYear + 1}-01-06`),
+      minStay: 3,
+      prices: {
+        create: barPrices.map((price) => ({ roomTypeId: price.roomTypeId, price: Math.round(price.basePrice * 1.35) })),
+      },
+    },
+  });
 
   const extras = await Promise.all(
     [

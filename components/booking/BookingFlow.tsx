@@ -16,17 +16,20 @@ export function BookingFlow({
   checkOut: initialOut = "",
   adults: initialAdults = 2,
   initialOffers = [],
+  initialNotices = [],
 }: {
   checkIn?: string;
   checkOut?: string;
   adults?: number;
   initialOffers?: AvailabilityOffer[];
+  initialNotices?: string[];
 }) {
   const [checkIn, setCheckIn] = useState(initialIn);
   const [checkOut, setCheckOut] = useState(initialOut);
   const [adults, setAdults] = useState(initialAdults);
   const [offers, setOffers] = useState(initialOffers);
-  const [searched, setSearched] = useState(initialOffers.length > 0);
+  const [notices, setNotices] = useState(initialNotices);
+  const [searched, setSearched] = useState(initialOffers.length > 0 || initialNotices.length > 0);
   const [roomTypeId, setRoomTypeId] = useState(initialOffers[0]?.roomTypeId ?? "");
   const [ratePlanId, setRatePlanId] = useState(preferRate(initialOffers[0]?.ratePlans ?? [])?.id ?? "");
   const [guest, setGuest] = useState({ firstName: "", lastName: "", email: "", phone: "" });
@@ -52,13 +55,15 @@ export function BookingFlow({
     setSearched(true);
     if (!result.ok) {
       setOffers([]);
+      setNotices([]);
       setRoomTypeId("");
       setRatePlanId("");
       setError(result.error);
       return;
     }
-    setOffers(result.data);
-    const first = result.data[0];
+    setOffers(result.data.offers);
+    setNotices(result.data.notices);
+    const first = result.data.offers[0];
     const preferred = first ? preferRate(first.ratePlans) : undefined;
     setRoomTypeId(first?.roomTypeId ?? "");
     setRatePlanId(preferred?.id ?? "");
@@ -118,13 +123,22 @@ export function BookingFlow({
         ) : null}
 
         {searched && offers.length === 0 && !error ? (
-          <p className="rounded-[var(--radius-panel)] bg-surface px-6 py-8 text-[0.95rem] leading-relaxed text-muted shadow-[var(--shadow-soft)]">
-            Quelle notti sono già prese. Provate altre date, o chiamate il{" "}
-            <a href={hotel.phoneHref} className="text-ink underline decoration-[rgb(37_39_33_/_0.25)] underline-offset-4">
-              {hotel.phone}
-            </a>
-            .
-          </p>
+          <div className="rounded-[var(--radius-panel)] bg-surface px-6 py-8 text-[0.95rem] leading-relaxed text-muted shadow-[var(--shadow-soft)]">
+            {notices.length ? (
+              <ul className="mb-3 space-y-1 text-ink">
+                {notices.map((notice) => (
+                  <li key={notice}>{notice}</li>
+                ))}
+              </ul>
+            ) : null}
+            <p>
+              {notices.length ? "Provate altre date" : "Quelle notti sono già prese. Provate altre date"}, o chiamate il{" "}
+              <a href={hotel.phoneHref} className="text-ink underline decoration-[rgb(37_39_33_/_0.25)] underline-offset-4">
+                {hotel.phone}
+              </a>
+              .
+            </p>
+          </div>
         ) : null}
 
         {offers.length > 0 ? (

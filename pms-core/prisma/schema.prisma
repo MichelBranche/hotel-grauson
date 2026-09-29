@@ -104,8 +104,10 @@ model Property {
   guests           Guest[]
   reservations     Reservation[]
   ratePlans        RatePlan[]
+  rateSeasons      RateSeason[]
   extras           Extra[]
   inventory        Inventory[]
+  roomBlocks       RoomBlock[]
   housekeepingTasks HousekeepingTask[]
   notifications    Notification[]
   auditLogs        AuditLog[]
@@ -173,6 +175,7 @@ model RoomType {
   reservations  Reservation[]
   rates         Rate[]
   ratePrices    RatePlanPrice[]
+  seasonPrices  RateSeasonPrice[]
   inventory     Inventory[]
   channelMaps   ChannelRoomMapping[]
 
@@ -204,6 +207,7 @@ model Room {
   updatedAt       DateTime   @updatedAt
   reservations    Reservation[]
   housekeepingTasks HousekeepingTask[]
+  blocks          RoomBlock[]
 
   @@unique([propertyId, number])
   @@index([propertyId, status])
@@ -254,10 +258,49 @@ model RatePlan {
   updatedAt           DateTime @updatedAt
   prices              RatePlanPrice[]
   rates               Rate[]
+  seasons             RateSeason[]
   reservations        Reservation[]
   channelMaps         ChannelRateMapping[]
 
   @@unique([propertyId, code])
+}
+
+/// A named date range (e.g. "Natale") with its own nightly prices and stay rules.
+/// startDate and endDate are both nights of the season (endDate inclusive).
+/// ratePlanId null = applies to every rate plan. Seasons may not overlap within
+/// the same scope; the service enforces it.
+model RateSeason {
+  id                String   @id @default(cuid())
+  propertyId        String
+  property          Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  ratePlanId        String?
+  ratePlan          RatePlan? @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
+  name              String
+  startDate         DateTime
+  endDate           DateTime
+  minStay           Int?
+  maxStay           Int?
+  closedToArrival   Boolean  @default(false)
+  closedToDeparture Boolean  @default(false)
+  notes             String   @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  prices            RateSeasonPrice[]
+
+  @@index([propertyId, startDate, endDate])
+}
+
+/// Season price for one room type. A room type without a row keeps its base price
+/// during the season (the season's stay rules still apply).
+model RateSeasonPrice {
+  id         String     @id @default(cuid())
+  seasonId   String
+  season     RateSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  roomTypeId String
+  roomType   RoomType   @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  price      Float
+
+  @@unique([seasonId, roomTypeId])
 }
 
 model RatePlanPrice {
@@ -311,6 +354,24 @@ model Inventory {
   maxStay     Int?
 
   @@unique([propertyId, roomTypeId, date])
+}
+
+/// One room out of inventory for a range of nights (endDate inclusive), e.g.
+/// maintenance or owner use. Unlike Room.status OUT_OF_ORDER it is dated.
+model RoomBlock {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  startDate  DateTime
+  endDate    DateTime
+  reason     String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([propertyId, startDate, endDate])
+  @@index([roomId, startDate, endDate])
 }
 
 model Reservation {

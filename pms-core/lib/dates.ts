@@ -49,6 +49,10 @@ export function formatWeekday(iso: string) {
   return format(parseISO(iso), "EEEEEE", { locale: it });
 }
 
+export function formatShort(iso: string) {
+  return format(parseISO(iso), "d MMM", { locale: it });
+}
+
 export function formatLong(iso: string) {
   return format(parseISO(iso), "d MMMM yyyy", { locale: it });
 }

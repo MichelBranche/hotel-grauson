@@ -8,7 +8,7 @@ import { Button } from "@pms-core/components/ui/button";
 import { Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Textarea } from "@pms-core/components/ui/input";
 import { formatMoney } from "@pms-core/lib/money";
-import type { AvailabilityOffer } from "@pms-core/types";
+import type { AvailabilityOffer, AvailabilityResult } from "@pms-core/types";
 
 const steps = [
   "Date",
@@ -21,6 +21,12 @@ const steps = [
   "Riepilogo",
   "Conferma",
 ];
+
+function seasonSummary(nights: AvailabilityOffer["ratePlans"][number]["nights"]) {
+  const counts = new Map<string, number>();
+  for (const night of nights) if (night.season) counts.set(night.season, (counts.get(night.season) ?? 0) + 1);
+  return [...counts].map(([name, count]) => `${count} ${count === 1 ? "notte" : "notti"} ${name}`).join(" · ");
+}
 
 export function NewReservationWizard({
   open,
@@ -39,6 +45,7 @@ export function NewReservationWizard({
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [offers, setOffers] = useState<AvailabilityOffer[]>([]);
+  const [unavailable, setUnavailable] = useState<AvailabilityResult["unavailable"]>([]);
   const [roomTypeId, setRoomTypeId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [ratePlanId, setRatePlanId] = useState("");
@@ -64,12 +71,18 @@ export function NewReservationWizard({
       setError(result.error);
       return false;
     }
-    setOffers(result.data);
-    if (result.data[0]) {
-      setRoomTypeId(result.data[0].roomTypeId);
-      setRoomId(result.data[0].availableRooms[0]?.id ?? "");
-      setRatePlanId(result.data[0].ratePlans[0]?.id ?? "");
-      setPaymentAmount(Math.round((result.data[0].ratePlans[0]?.total ?? 0) * 0.3));
+    const { offers: found, unavailable: refused } = result.data;
+    setOffers(found);
+    setUnavailable(refused);
+    if (found[0]) {
+      setRoomTypeId(found[0].roomTypeId);
+      setRoomId(found[0].availableRooms[0]?.id ?? "");
+      setRatePlanId(found[0].ratePlans[0]?.id ?? "");
+      setPaymentAmount(Math.round((found[0].ratePlans[0]?.total ?? 0) * 0.3));
+    } else {
+      setRoomTypeId("");
+      setRoomId("");
+      setRatePlanId("");
     }
     return true;
   }
@@ -132,6 +145,11 @@ export function NewReservationWizard({
 
       {step === 1 ? (
         <ul className="space-y-2">
+          {offers.length === 0 ? (
+            <li className="rounded-2xl border border-dashed border-[var(--pms-line)] px-4 py-5 text-sm text-[var(--pms-muted)]">
+              Nessuna camera vendibile per queste date. Torna indietro e cambia date od ospiti.
+            </li>
+          ) : null}
           {offers.map((item) => (
             <li key={item.roomTypeId}>
               <button
@@ -143,9 +161,23 @@ export function NewReservationWizard({
                 }}
                 className={`w-full rounded-2xl border px-4 py-3 text-left ${roomTypeId === item.roomTypeId ? "border-[var(--pms-alpine)] bg-white" : "border-[var(--pms-line)]"}`}
               >
-                <p className="font-medium">{item.roomTypeName}</p>
+                <p className="flex items-baseline justify-between gap-3 font-medium">
+                  <span>{item.roomTypeName}</span>
+                  {item.ratePlans[0] ? (
+                    <span className="text-sm tabular-nums">da {formatMoney(Math.min(...item.ratePlans.map((plan) => plan.total)))}</span>
+                  ) : null}
+                </p>
                 <p className="text-xs text-[var(--pms-muted)]">{item.remaining} camere · fino a {item.capacity} ospiti</p>
               </button>
+            </li>
+          ))}
+          {unavailable.map((item) => (
+            <li
+              key={item.roomTypeId}
+              className="flex items-baseline justify-between gap-3 rounded-2xl border border-[var(--pms-line)] bg-[var(--pms-surface-dark)]/40 px-4 py-3 text-sm"
+            >
+              <span className="text-[var(--pms-muted)]">{item.roomTypeName}</span>
+              <span className="text-right text-xs">{item.reason}</span>
             </li>
           ))}
         </ul>
@@ -195,8 +227,12 @@ export function NewReservationWizard({
               >
                 <p className="font-medium">{item.name}</p>
                 <p className="text-xs text-[var(--pms-muted)]">
-                  {formatMoney(item.total)} · {item.refundable ? "Rimborsabile" : "Non rimborsabile"}
+                  {formatMoney(item.total)} · {formatMoney(item.nightly)} a notte · {item.refundable ? "Rimborsabile" : "Non rimborsabile"}
+                  {item.minimumStay > 1 ? ` · min. ${item.minimumStay} notti` : ""}
                 </p>
+                {seasonSummary(item.nights) ? (
+                  <p className="mt-0.5 text-xs text-[var(--pms-muted)]">{seasonSummary(item.nights)}</p>
+                ) : null}
               </button>
             </li>
           ))}
@@ -261,7 +297,11 @@ export function NewReservationWizard({
           Indietro
         </Button>
         {step < 7 ? (
-          <Button type="button" onClick={() => void next()}>
+          <Button
+            type="button"
+            onClick={() => void next()}
+            disabled={(step === 0 && (!checkIn || !checkOut)) || (step >= 1 && (!roomId || !ratePlanId))}
+          >
             Continua
           </Button>
         ) : step === 7 ? (

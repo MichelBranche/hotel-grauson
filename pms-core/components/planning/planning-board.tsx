@@ -127,6 +127,11 @@ export function PlanningBoard({
   const dayWidth = widths[view];
   const selected = data.reservations.find((item) => item.id === selectedId) ?? null;
 
+  const closedNights = useMemo(
+    () => new Set(data.closedNights.map((night) => `${night.roomTypeId}:${night.date}`)),
+    [data.closedNights],
+  );
+
   const visible = useMemo(
     () => data.reservations.filter((item) => item.checkIn < to && item.checkOut > from && item.status !== "CANCELLED"),
     [data.reservations, from, to],
@@ -280,13 +285,34 @@ export function PlanningBoard({
                     ) : null}
                   </div>
                   <div className="relative flex-1">
-                    {days.map((day) => (
-                      <div
-                        key={day}
-                        className="absolute top-0 h-full border-l border-[var(--pms-line)]"
-                        style={{ left: nightsBetween(from, day) * dayWidth, width: dayWidth }}
-                      />
-                    ))}
+                    {days.map((day) => {
+                      const closed = closedNights.has(`${room.roomTypeId}:${day}`);
+                      return (
+                        <div
+                          key={day}
+                          className={cn("absolute top-0 h-full border-l border-[var(--pms-line)]", closed && "pms-closed-night")}
+                          style={{ left: nightsBetween(from, day) * dayWidth, width: dayWidth }}
+                          title={closed ? `${room.roomTypeName} chiusa alla vendita` : undefined}
+                        />
+                      );
+                    })}
+                    {data.blocks
+                      .filter((block) => block.roomId === room.id)
+                      .map((block) => {
+                        const start = Math.max(nightsBetween(from, block.startDate), 0);
+                        const end = Math.min(nightsBetween(from, block.endDate) + 1, days.length);
+                        if (end <= start) return null;
+                        return (
+                          <div
+                            key={block.id}
+                            className="pms-room-block absolute top-1.5 flex h-10 items-center truncate rounded-full px-3 text-[11px] font-medium"
+                            style={{ left: start * dayWidth + 6, width: Math.max((end - start) * dayWidth - 12, 24) }}
+                            title={`Camera ${room.number} chiusa ${block.startDate} → ${block.endDate}${block.reason ? ` · ${block.reason}` : ""}`}
+                          >
+                            <span className="truncate">Chiusa{block.reason ? ` · ${block.reason}` : ""}</span>
+                          </div>
+                        );
+                      })}
                     {visible
                       .filter((item) => item.roomId === room.id)
                       .map((reservation) => {
