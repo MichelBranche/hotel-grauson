@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { reportAction, useActionPending } from "@pms-core/components/ui/action-feedback";
 
 import { deleteRoomTypeAction, duplicateRoomTypeAction, setRoomTypeActiveAction } from "@pms-core/actions/rooms";
 import { RoomTypeForm } from "@pms-core/components/rooms/type-form";
@@ -12,6 +12,7 @@ import { ConfirmDialog, Dialog } from "@pms-core/components/ui/dialog";
 export function TypeDetailActions({ type }: { type: StructureType }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { pending, run } = useActionPending();
 
   return (
     <section className="pms-card p-6">
@@ -19,21 +20,25 @@ export function TypeDetailActions({ type }: { type: StructureType }) {
         <Button onClick={() => setEditOpen(true)}>Modifica</Button>
         <Button
           variant="outline"
-          onClick={async () => {
-            const result = await duplicateRoomTypeAction(type.id);
-            if (!result.ok) toast.error(result.error);
-            else toast.success("Tipologia duplicata come inattiva.");
-          }}
+          pending={pending === "dup"}
+          onClick={() =>
+            void run("dup", async () => {
+              const result = await duplicateRoomTypeAction(type.id);
+              reportAction("dup", result, "Tipologia duplicata come inattiva.");
+            })
+          }
         >
           Duplica
         </Button>
         <Button
           variant="outline"
-          onClick={async () => {
-            const result = await setRoomTypeActiveAction(type.id, !type.active);
-            if (!result.ok) toast.error(result.error);
-            else toast.success(type.active ? "Tipologia disattivata." : "Tipologia attivata.");
-          }}
+          pending={pending === "active"}
+          onClick={() =>
+            void run("active", async () => {
+              const result = await setRoomTypeActiveAction(type.id, !type.active);
+              reportAction("active", result, type.active ? "Tipologia disattivata." : "Tipologia attivata.");
+            })
+          }
         >
           {type.active ? "Disattiva" : "Attiva"}
         </Button>
@@ -58,11 +63,9 @@ export function TypeDetailActions({ type }: { type: StructureType }) {
         description="L'eliminazione è bloccata se ci sono camere o prenotazioni collegate. In quel caso usa la disattivazione."
         confirmLabel="Elimina"
         danger
-        onConfirm={() => {
-          void deleteRoomTypeAction(type.id).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success("Tipologia eliminata.");
-          });
+        onConfirm={async () => {
+          const result = await deleteRoomTypeAction(type.id);
+          reportAction(type.id, result, "Tipologia eliminata.");
         }}
       />
     </section>

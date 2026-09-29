@@ -1,4 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 import type { ButtonHTMLAttributes } from "react";
 
 import { cn } from "@pms-core/lib/utils";
@@ -29,7 +30,22 @@ export function Button({
   className,
   variant,
   size,
+  pending = false,
+  pendingLabel = "Salvataggio…",
+  disabled,
+  children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>) {
-  return <button className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+}: ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants> & { pending?: boolean; pendingLabel?: string }) {
+  return (
+    <button
+      className={cn(buttonVariants({ variant, size }), className)}
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
+      {...props}
+    >
+      {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+      {pending ? pendingLabel : children}
+    </button>
+  );
 }

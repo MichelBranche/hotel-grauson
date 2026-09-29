@@ -4,7 +4,7 @@ import type { RoomStatus } from "@prisma/client";
 import { BedDouble, CalendarDays, Mail, Phone, Users } from "lucide-react";
 import Link from "next/link";
 
-import { LifecycleActions, type DeskPermissions } from "@pms-core/components/reservations/lifecycle-actions";
+import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
 import { reservationStatusMeta } from "@pms-core/config/status";
 import { StatusBadge } from "@pms-core/components/ui/badge";
 import { formatLong, nightsBetween } from "@pms-core/lib/dates";
@@ -28,7 +28,7 @@ export function ReservationDrawer({
   businessToday: string;
   onClose: () => void;
   onMove: () => void;
-  onChanged: () => void;
+  onChanged: (patch?: StayPatch) => void;
 }) {
   if (!reservation) {
     return (

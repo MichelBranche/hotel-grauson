@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { reportAction, useActionPending } from "@pms-core/components/ui/action-feedback";
 
 import { deleteRoomTypeAction, duplicateRoomTypeAction, setRoomTypeActiveAction } from "@pms-core/actions/rooms";
 import { RoomTypeForm } from "@pms-core/components/rooms/type-form";
@@ -27,6 +27,7 @@ export function TypeList({
   const [editing, setEditing] = useState<StructureType | null | "new">(null);
   const [formOpen, setFormOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<StructureType | null>(null);
+  const { pending, run } = useActionPending();
 
   function openForm(next: StructureType | "new") {
     setEditing(next);
@@ -94,22 +95,26 @@ export function TypeList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={async () => {
-                        const result = await duplicateRoomTypeAction(type.id);
-                        if (!result.ok) toast.error(result.error);
-                        else toast.success("Tipologia duplicata come inattiva.");
-                      }}
+                      pending={pending === `dup-${type.id}`}
+                      onClick={() =>
+                        void run(`dup-${type.id}`, async () => {
+                          const result = await duplicateRoomTypeAction(type.id);
+                          reportAction(`dup-${type.id}`, result, "Tipologia duplicata come inattiva.");
+                        })
+                      }
                     >
                       Duplica
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={async () => {
-                        const result = await setRoomTypeActiveAction(type.id, !type.active);
-                        if (!result.ok) toast.error(result.error);
-                        else toast.success(type.active ? "Tipologia disattivata." : "Tipologia attivata.");
-                      }}
+                      pending={pending === `active-${type.id}`}
+                      onClick={() =>
+                        void run(`active-${type.id}`, async () => {
+                          const result = await setRoomTypeActiveAction(type.id, !type.active);
+                          reportAction(`active-${type.id}`, result, type.active ? "Tipologia disattivata." : "Tipologia attivata.");
+                        })
+                      }
                     >
                       {type.active ? "Disattiva" : "Attiva"}
                     </Button>
@@ -156,12 +161,10 @@ export function TypeList({
         }
         confirmLabel="Elimina"
         danger
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingDelete) return;
-          void deleteRoomTypeAction(pendingDelete.id).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success("Tipologia eliminata.");
-          });
+          const result = await deleteRoomTypeAction(pendingDelete.id);
+          reportAction(pendingDelete.id, result, "Tipologia eliminata.");
         }}
       />
     </div>

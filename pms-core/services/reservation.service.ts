@@ -1,4 +1,4 @@
-import type { Prisma, ReservationStatus, UserRole } from "@prisma/client";
+import type { Prisma, ReservationStatus, RoomStatus, UserRole } from "@prisma/client";
 
 import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
@@ -527,7 +527,20 @@ export const reservationService = {
                   ? "Prenotazione messa in opzione."
                   : "Stato aggiornato.";
 
-    return { id, status, housekeepingCreated, message, total: current.total };
+    const roomStatus: RoomStatus =
+      status === "CHECKED_IN" ? "OCCUPIED" : housekeepingCreated ? "DIRTY" : current.room.status;
+
+    return {
+      id,
+      status,
+      housekeepingCreated,
+      message,
+      total: current.total,
+      roomId: current.roomId,
+      roomStatus,
+      checkOut: departure?.shortened ? departure.checkOut : toISODate(current.checkOut),
+      nights: departure?.shortened ? departure.nights : current.nights,
+    };
   },
 
   async updateNotes(id: string, notes: string, actor: Actor = {}) {

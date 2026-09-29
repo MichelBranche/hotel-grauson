@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { reportAction, useActionPending } from "@pms-core/components/ui/action-feedback";
 
 import { deleteRoomAction, setRoomActiveAction } from "@pms-core/actions/rooms";
 import { RoomForm } from "@pms-core/components/rooms/room-form";
@@ -34,6 +34,7 @@ export function RoomList({
   const [active, setActive] = useState("all");
   const [editing, setEditing] = useState<StructureRoom | null | "new">(null);
   const [pendingDelete, setPendingDelete] = useState<StructureRoom | null>(null);
+  const { pending, run } = useActionPending();
 
   const filtered = useMemo(
     () =>
@@ -147,11 +148,13 @@ export function RoomList({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={async () => {
-                              const result = await setRoomActiveAction(room.id, !room.active);
-                              if (!result.ok) toast.error(result.error);
-                              else toast.success(room.active ? "Camera disattivata." : "Camera attivata.");
-                            }}
+                            pending={pending === room.id}
+                            onClick={() =>
+                              void run(room.id, async () => {
+                                const result = await setRoomActiveAction(room.id, !room.active);
+                                reportAction(room.id, result, room.active ? "Camera disattivata." : "Camera attivata.");
+                              })
+                            }
                           >
                             {room.active ? "Disattiva" : "Attiva"}
                           </Button>
@@ -222,12 +225,10 @@ export function RoomList({
         }
         confirmLabel="Elimina"
         danger
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingDelete) return;
-          void deleteRoomAction(pendingDelete.id).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success("Camera eliminata.");
-          });
+          const result = await deleteRoomAction(pendingDelete.id);
+          reportAction(pendingDelete.id, result, "Camera eliminata.");
         }}
       />
     </div>
