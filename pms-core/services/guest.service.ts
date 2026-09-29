@@ -81,4 +81,28 @@ export const guestService = {
     });
     return guest;
   },
+
+  async delete(id: string, propertyId: string, userId?: string) {
+    await prisma.$transaction(async (tx) => {
+      const current = await tx.guest.findFirst({ where: { id, propertyId } });
+      if (!current) throw new DomainError("Ospite non trovato.");
+      const [reservations, links] = await Promise.all([
+        tx.reservation.count({ where: { guestId: id } }),
+        tx.reservationGuest.count({ where: { guestId: id } }),
+      ]);
+      if (reservations > 0 || links > 0) {
+        throw new DomainError("Impossibile eliminare: l'ospite ha ancora soggiorni collegati.");
+      }
+      await tx.guest.delete({ where: { id } });
+      await auditService.record({
+        propertyId,
+        userId,
+        action: "guest.delete",
+        entity: "Guest",
+        entityId: id,
+        before: { name: `${current.lastName} ${current.firstName}` },
+        tx,
+      });
+    });
+  },
 };

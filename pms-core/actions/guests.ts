@@ -43,3 +43,12 @@ export async function updateGuestAction(
     return { id };
   });
 }
+
+export async function deleteGuestAction(id: string) {
+  return wrapAction(async () => {
+    const session = await requirePermission("guests.write");
+    await guestService.delete(id, session.propertyId, session.id);
+    revalidatePath("/pms/guests");
+    return { id };
+  });
+}
