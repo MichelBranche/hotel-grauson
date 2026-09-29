@@ -59,6 +59,7 @@ export function NewReservationWizard({
 
   const offer = offers.find((item) => item.roomTypeId === roomTypeId);
   const rate = offer?.ratePlans.find((item) => item.id === ratePlanId);
+  const guestReady = guest.firstName.trim().length > 0 && guest.lastName.trim().length > 0;
 
   const extraTotal = useMemo(
     () => extras.filter((item) => selectedExtras.includes(item.id)).reduce((sum, item) => sum + item.price, 0),
@@ -95,10 +96,21 @@ export function NewReservationWizard({
       setPending(null);
       if (!ok) return;
     }
+    if (step === 3 && !guestReady) {
+      setError("Inserisci nome e cognome.");
+      return;
+    }
     setStep((value) => Math.min(value + 1, steps.length - 1));
   }
 
   async function confirm() {
+    const firstName = guest.firstName.trim();
+    const lastName = guest.lastName.trim();
+    if (!firstName || !lastName) {
+      setError("Inserisci nome e cognome.");
+      setStep(3);
+      return;
+    }
     setPending("save");
     const result = await createReservationAction({
       roomId,
@@ -108,7 +120,7 @@ export function NewReservationWizard({
       children,
       ratePlanId,
       extras: selectedExtras.map((extraId) => ({ extraId, quantity: 1 })),
-      guest,
+      guest: { ...guest, firstName, lastName },
       notes,
       payment: paymentAmount > 0 ? { amount: paymentAmount, method: "CARD" } : undefined,
     });
@@ -204,11 +216,31 @@ export function NewReservationWizard({
 
       {step === 3 ? (
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Nome">
-            <Input value={guest.firstName} onChange={(event) => setGuest({ ...guest, firstName: event.target.value })} />
+          <Field label="Nome *">
+            <Input
+              value={guest.firstName}
+              required
+              aria-required="true"
+              autoComplete="given-name"
+              onChange={(event) => {
+                const firstName = event.target.value;
+                setGuest({ ...guest, firstName });
+                if (firstName.trim() && guest.lastName.trim() && error === "Inserisci nome e cognome.") setError(null);
+              }}
+            />
           </Field>
-          <Field label="Cognome">
-            <Input value={guest.lastName} onChange={(event) => setGuest({ ...guest, lastName: event.target.value })} />
+          <Field label="Cognome *">
+            <Input
+              value={guest.lastName}
+              required
+              aria-required="true"
+              autoComplete="family-name"
+              onChange={(event) => {
+                const lastName = event.target.value;
+                setGuest({ ...guest, lastName });
+                if (guest.firstName.trim() && lastName.trim() && error === "Inserisci nome e cognome.") setError(null);
+              }}
+            />
           </Field>
           <Field label="Email">
             <Input value={guest.email} onChange={(event) => setGuest({ ...guest, email: event.target.value })} />
@@ -300,17 +332,24 @@ export function NewReservationWizard({
           Indietro
         </Button>
         {step < 7 ? (
-          <Button
-            type="button"
-            onClick={() => void next()}
-            pending={pending === "search"}
-            pendingLabel="Ricerca…"
-            disabled={pending !== null || (step === 0 && (!checkIn || !checkOut)) || (step >= 1 && (!roomId || !ratePlanId))}
+          <span
+            className="inline-flex"
+            onClick={() => {
+              if (step === 3 && !guestReady) setError("Inserisci nome e cognome.");
+            }}
           >
-            Continua
-          </Button>
+            <Button
+              type="button"
+              onClick={() => void next()}
+              pending={pending === "search"}
+              pendingLabel="Ricerca…"
+              disabled={pending !== null || (step === 0 && (!checkIn || !checkOut)) || (step >= 1 && (!roomId || !ratePlanId)) || (step === 3 && !guestReady)}
+            >
+              Continua
+            </Button>
+          </span>
         ) : step === 7 ? (
-          <Button type="button" onClick={() => void confirm()} pending={pending === "save"} disabled={pending !== null || !guest.firstName || !guest.lastName}>
+          <Button type="button" onClick={() => void confirm()} pending={pending === "save"} disabled={pending !== null || !guest.firstName.trim() || !guest.lastName.trim()}>
             Conferma
           </Button>
         ) : (
