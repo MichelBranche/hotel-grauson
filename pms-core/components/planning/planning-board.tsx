@@ -10,13 +10,15 @@ import { toast } from "sonner";
 
 import { getPlanningAction } from "@pms-core/actions/lookups";
 import { moveReservationAction } from "@pms-core/actions/reservations";
-import { reservationStatusMeta, roomStatusMeta } from "@pms-core/config/status";
+import { releasedStatuses, reservationStatusMeta, roomStatusMeta } from "@pms-core/config/status";
+import type { DeskPermissions } from "@pms-core/components/reservations/lifecycle-actions";
 import { NewReservationWizard } from "@pms-core/components/planning/new-reservation-wizard";
 import { MoveDialog } from "@pms-core/components/planning/move-dialog";
 import { ReservationDrawer } from "@pms-core/components/planning/reservation-drawer";
 import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
 import { addDaysISO, eachISODate, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
+import { formatMoneyExact } from "@pms-core/lib/money";
 import { cn } from "@pms-core/lib/utils";
 import type { PlanningData, PlanningReservation, PlanningView } from "@pms-core/types";
 
@@ -42,7 +44,10 @@ function Block({
     id: reservation.id,
     data: { reservation },
   });
+  const [draftOut, setDraftOut] = useState<string | null>(null);
   const meta = reservationStatusMeta[reservation.status];
+  const dayWidth = width / Math.max(reservation.nights, 1);
+  const extraDays = draftOut ? nightsBetween(reservation.checkOut, draftOut) : 0;
 
   return (
     <div
@@ -56,7 +61,7 @@ function Block({
       )}
       style={{
         left,
-        width: Math.max(width, 72),
+        width: Math.max(width + extraDays * dayWidth, 72),
         background: reservation.color,
         transform: CSS.Translate.toString(transform),
       }}
@@ -75,14 +80,17 @@ function Block({
           event.preventDefault();
           const startX = event.clientX;
           const startOut = reservation.checkOut;
-          const dayWidth = width / Math.max(reservation.nights, 1);
+          let nextOut = startOut;
           const onMove = (moveEvent: PointerEvent) => {
             const delta = Math.round((moveEvent.clientX - startX) / dayWidth);
-            onResize(addDaysISO(startOut, delta));
+            nextOut = addDaysISO(startOut, delta);
+            setDraftOut(nextOut > reservation.checkIn ? nextOut : reservation.checkOut);
           };
           const onUp = () => {
             window.removeEventListener("pointermove", onMove);
             window.removeEventListener("pointerup", onUp);
+            setDraftOut(null);
+            if (nextOut !== startOut && nextOut > reservation.checkIn) onResize(nextOut);
           };
           window.addEventListener("pointermove", onMove);
           window.addEventListener("pointerup", onUp);
@@ -95,9 +103,15 @@ function Block({
 export function PlanningBoard({
   initial,
   extras,
+  plans,
+  permissions,
+  businessToday,
 }: {
   initial: PlanningData;
   extras: { id: string; name: string; price: number }[];
+  plans: { id: string; code: string; name: string }[];
+  permissions: DeskPermissions;
+  businessToday: string;
 }) {
   const [data, setData] = useState(initial);
   const [view, setView] = useState<PlanningView>("twoweeks");
@@ -127,17 +141,24 @@ export function PlanningBoard({
   const dayWidth = widths[view];
   const selected = data.reservations.find((item) => item.id === selectedId) ?? null;
 
+  function refreshBoard() {
+    void getPlanningAction(from, to).then((result) => {
+      if (result.ok) setData(result.data);
+    });
+  }
+
   const closedNights = useMemo(
     () => new Set(data.closedNights.map((night) => `${night.roomTypeId}:${night.date}`)),
     [data.closedNights],
   );
 
   const visible = useMemo(
-    () => data.reservations.filter((item) => item.checkIn < to && item.checkOut > from && item.status !== "CANCELLED"),
+    () => data.reservations.filter((item) => item.checkIn < to && item.checkOut > from && !releasedStatuses.includes(item.status)),
     [data.reservations, from, to],
   );
 
   async function applyMove(id: string, next: { roomId: string; checkIn: string; checkOut: string }, previous: { roomId: string; checkIn: string; checkOut: string }) {
+    if (next.roomId === previous.roomId && next.checkIn === previous.checkIn && next.checkOut === previous.checkOut) return;
     setData((current) => ({
       ...current,
       reservations: current.reservations.map((item) =>
@@ -169,7 +190,36 @@ export function PlanningBoard({
       toast.error(result.error);
       return;
     }
-    toast.success("Prenotazione spostata.", {
+    setData((current) => ({
+      ...current,
+      reservations: current.reservations.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              roomId: result.data.roomId,
+              roomNumber: result.data.roomNumber,
+              roomTypeName: result.data.roomTypeName,
+              checkIn: result.data.checkIn,
+              checkOut: result.data.checkOut,
+              nights: result.data.nights,
+              total: result.data.total,
+              adults: result.data.adults,
+              children: result.data.children,
+              ratePlanId: result.data.ratePlanId,
+              guestName: result.data.guestName,
+              guestFirstName: result.data.guestFirstName,
+              guestLastName: result.data.guestLastName,
+              email: result.data.email,
+              phone: result.data.phone,
+            }
+          : item,
+      ),
+    }));
+    const priceNote =
+      result.data.previousTotal === result.data.total
+        ? ""
+        : ` Totale ${formatMoneyExact(result.data.previousTotal)} → ${formatMoneyExact(result.data.total)}.`;
+    toast.success(`Prenotazione spostata.${priceNote}`, {
       action: {
         label: "Annulla",
         onClick: () => {
@@ -355,10 +405,13 @@ export function PlanningBoard({
         <MiniCalendar value={anchor} onChange={setAnchor} />
         <ReservationDrawer
           reservation={selected}
+          roomStatus={data.rooms.find((room) => room.id === selected?.roomId)?.status ?? "AVAILABLE"}
           extras={extras}
+          permissions={permissions}
+          businessToday={businessToday}
           onClose={() => setSelectedId(null)}
           onMove={() => setMoveOpen(true)}
-          onChanged={() => window.location.reload()}
+          onChanged={refreshBoard}
         />
       </div>
 
@@ -367,19 +420,14 @@ export function PlanningBoard({
         onOpenChange={setMoveOpen}
         reservation={selected}
         rooms={data.rooms}
-        onMoved={(previous) => {
-          if (!selected) return;
-          toast.success("Prenotazione spostata.", {
-            action: {
-              label: "Annulla",
-              onClick: () =>
-                void applyMove(selected.id, previous, {
-                  roomId: selected.roomId,
-                  checkIn: selected.checkIn,
-                  checkOut: selected.checkOut,
-                }),
-            },
-          });
+        plans={plans}
+        onSaved={(next) => {
+          const priceNote =
+            next.previousTotal === next.total
+              ? ""
+              : ` Totale ${formatMoneyExact(next.previousTotal)} → ${formatMoneyExact(next.total)}.`;
+          toast.success(`Prenotazione aggiornata.${priceNote}`);
+          refreshBoard();
         }}
       />
       <NewReservationWizard open={wizardOpen} onOpenChange={setWizardOpen} extras={extras} onCreated={() => window.location.reload()} />

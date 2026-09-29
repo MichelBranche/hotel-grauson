@@ -1,33 +1,35 @@
 "use client";
 
+import type { RoomStatus } from "@prisma/client";
 import { BedDouble, CalendarDays, Mail, Phone, Users } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
 
-import { addReservationExtraAction, addReservationPaymentAction, updateReservationStatusAction } from "@pms-core/actions/reservations";
+import { LifecycleActions, type DeskPermissions } from "@pms-core/components/reservations/lifecycle-actions";
 import { reservationStatusMeta } from "@pms-core/config/status";
-import { Button } from "@pms-core/components/ui/button";
 import { StatusBadge } from "@pms-core/components/ui/badge";
-import { ConfirmDialog } from "@pms-core/components/ui/dialog";
 import { formatLong, nightsBetween } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
 import type { PlanningReservation } from "@pms-core/types";
 
 export function ReservationDrawer({
   reservation,
+  roomStatus,
   extras,
+  permissions,
+  businessToday,
   onClose,
   onMove,
   onChanged,
 }: {
   reservation: PlanningReservation | null;
-  extras: { id: string; name: string }[];
+  roomStatus: RoomStatus;
+  extras: { id: string; name: string; price: number }[];
+  permissions: DeskPermissions;
+  businessToday: string;
   onClose: () => void;
   onMove: () => void;
   onChanged: () => void;
 }) {
-  const [confirm, setConfirm] = useState<"CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   if (!reservation) {
     return (
       <aside className="pms-card hidden w-full p-5 lg:block">
@@ -37,12 +39,6 @@ export function ReservationDrawer({
   }
 
   const meta = reservationStatusMeta[reservation.status];
-
-  async function run(status: "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED") {
-    const result = await updateReservationStatusAction(reservation!.id, status);
-    if (!result.ok) setError(result.error);
-    else onChanged();
-  }
 
   return (
     <aside className="pms-card w-full p-5">
@@ -81,63 +77,36 @@ export function ReservationDrawer({
         <p className="font-semibold tabular-nums tracking-[-0.02em] text-2xl">{formatMoney(reservation.total, reservation.currency)}</p>
       </div>
 
-      {reservation.notes ? <p className="mt-4 text-sm text-[var(--pms-muted)]">{reservation.notes}</p> : null}
-      {error ? <p className="mt-3 text-sm text-[#8a3b3b]">{error}</p> : null}
+      {reservation.notes ? <p className="mt-4 whitespace-pre-wrap text-sm text-[var(--pms-muted)]">{reservation.notes}</p> : null}
 
-      <div className="mt-5 grid gap-2">
-        <Button onClick={onMove}>Modifica / sposta</Button>
-        <Button variant="outline" onClick={() => setConfirm("CHECKED_IN")}>
-          Check-in
-        </Button>
-        <Button variant="outline" onClick={() => setConfirm("CHECKED_OUT")}>
-          Check-out
-        </Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            const extra = extras[0];
-            if (!extra) return;
-            const result = await addReservationExtraAction(reservation.id, extra.id, 1);
-            if (!result.ok) setError(result.error);
-            else onChanged();
+      <div className="mt-5">
+        <LifecycleActions
+          reservation={{
+            id: reservation.id,
+            code: reservation.code,
+            status: reservation.status,
+            total: reservation.total,
+            roomNumber: reservation.roomNumber,
+            roomStatus,
+            checkIn: reservation.checkIn,
+            checkOut: reservation.checkOut,
+            balance: reservation.total,
           }}
-        >
-          Aggiungi extra
-        </Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            const result = await addReservationPaymentAction({
-              id: reservation.id,
-              amount: Math.round(reservation.total * 0.3),
-              method: "CARD",
-            });
-            if (!result.ok) setError(result.error);
-            else onChanged();
-          }}
-        >
-          Aggiungi pagamento
-        </Button>
-        <Button variant="ghost" onClick={() => setConfirm("CANCELLED")}>
-          Cancella prenotazione
-        </Button>
-        <button type="button" className="text-xs text-[var(--pms-muted)]" onClick={onClose}>
+          extras={extras}
+          permissions={permissions}
+          businessToday={businessToday}
+          onModify={onMove}
+          onChanged={onChanged}
+        />
+      </div>
+      <div className="mt-3 flex items-center justify-between text-xs text-[var(--pms-muted)]">
+        <Link href={`/pms/reservations/${reservation.id}`} className="underline-offset-2 hover:underline">
+          Apri scheda
+        </Link>
+        <button type="button" onClick={onClose}>
           Chiudi
         </button>
       </div>
-
-      <ConfirmDialog
-        open={confirm !== null}
-        onOpenChange={(open) => !open && setConfirm(null)}
-        title={confirm === "CANCELLED" ? "Cancellare la prenotazione?" : "Confermare l'operazione?"}
-        description={
-          confirm === "CANCELLED"
-            ? `La prenotazione ${reservation.code} verrà cancellata e la camera tornerà disponibile.`
-            : `Aggiornare lo stato di ${reservation.code}?`
-        }
-        danger={confirm === "CANCELLED"}
-        onConfirm={() => confirm && void run(confirm)}
-      />
     </aside>
   );
 }

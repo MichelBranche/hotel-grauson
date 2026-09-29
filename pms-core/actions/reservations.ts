@@ -3,9 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import type { ReservationStatus } from "@prisma/client";
+
 import { requirePermission } from "@pms-core/auth/guards";
 import { wrapAction } from "@pms-core/actions/result";
-import { reservationService } from "@pms-core/services/reservation.service";
+import type { Permission } from "@pms-core/config/permissions";
+import { reservationService, type ReservationChange } from "@pms-core/services/reservation.service";
+import type { SessionUser } from "@pms-core/types";
 
 const staySchema = z.object({
   roomId: z.string().min(1),
@@ -17,6 +21,16 @@ const staySchema = z.object({
 
 function refresh() {
   revalidatePath("/pms", "layout");
+}
+
+function actor(session: SessionUser) {
+  return { id: session.id, name: `${session.lastName} ${session.firstName}`, role: session.role };
+}
+
+function permissionForStatus(status: ReservationStatus): Permission {
+  if (status === "CANCELLED") return "reservations.cancel";
+  if (status === "CHECKED_IN" || status === "CHECKED_OUT" || status === "NO_SHOW") return "reservations.checkin";
+  return "reservations.write";
 }
 
 export async function createReservationAction(input: {
@@ -44,41 +58,53 @@ export async function createReservationAction(input: {
     staySchema.parse(input);
     const reservation = await reservationService.create(
       { ...input, propertyId: session.propertyId, source: "pms" },
-      { id: session.id, name: `${session.lastName} ${session.firstName}` },
+      actor(session),
     );
     refresh();
     return { id: reservation?.id, code: reservation?.code };
   });
 }
 
-export async function moveReservationAction(input: {
-  id: string;
-  roomId: string;
-  checkIn: string;
-  checkOut: string;
-  adults?: number;
-  children?: number;
-}) {
+export async function previewReservationChangeAction(input: { id: string } & ReservationChange) {
   return wrapAction(async () => {
-    const session = await requirePermission("planning.move");
-    const reservation = await reservationService.move(input.id, input, { id: session.id });
-    refresh();
-    return {
-      id: reservation?.id,
-      roomId: reservation?.roomId,
-      checkIn: reservation?.checkIn,
-      checkOut: reservation?.checkOut,
-    };
+    await requirePermission("planning.move");
+    const { id, ...change } = input;
+    return reservationService.previewChange(id, change);
   });
 }
 
-export async function updateReservationStatusAction(id: string, status: "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | "NO_SHOW" | "CONFIRMED") {
+export async function moveReservationAction(input: { id: string } & ReservationChange) {
   return wrapAction(async () => {
-    const permission = status === "CANCELLED" ? "reservations.cancel" : "reservations.checkin";
-    const session = await requirePermission(permission);
-    await reservationService.updateStatus(id, status, { id: session.id });
+    const session = await requirePermission("planning.move");
+    const { id, ...change } = input;
+    const reservation = await reservationService.move(id, change, actor(session));
     refresh();
-    return { id, status };
+    return reservation;
+  });
+}
+
+export async function updateReservationStatusAction(
+  id: string,
+  status: "CHECKED_IN" | "CHECKED_OUT" | "NO_SHOW" | "CONFIRMED" | "OPTION",
+  reason?: string,
+) {
+  return wrapAction(async () => {
+    const session = await requirePermission(permissionForStatus(status));
+    const result = await reservationService.updateStatus(id, status, actor(session), { reason });
+    refresh();
+    return result;
+  });
+}
+
+export async function cancelReservationAction(input: { id: string; reason: string; force?: boolean }) {
+  return wrapAction(async () => {
+    const session = await requirePermission("reservations.cancel");
+    const result = await reservationService.updateStatus(input.id, "CANCELLED", actor(session), {
+      reason: input.reason,
+      force: input.force,
+    });
+    refresh();
+    return result;
   });
 }
 
@@ -90,7 +116,7 @@ export async function addReservationPaymentAction(input: {
 }) {
   return wrapAction(async () => {
     const session = await requirePermission("payments.write");
-    await reservationService.addPayment(input.id, input, { id: session.id });
+    await reservationService.addPayment(input.id, input, actor(session));
     refresh();
     return { id: input.id };
   });
@@ -99,7 +125,7 @@ export async function addReservationPaymentAction(input: {
 export async function addReservationExtraAction(id: string, extraId: string, quantity: number) {
   return wrapAction(async () => {
     const session = await requirePermission("reservations.write");
-    await reservationService.addExtra(id, extraId, quantity, { id: session.id });
+    await reservationService.addExtra(id, extraId, quantity, actor(session));
     refresh();
     return { id };
   });
@@ -108,7 +134,7 @@ export async function addReservationExtraAction(id: string, extraId: string, qua
 export async function updateReservationNotesAction(id: string, notes: string) {
   return wrapAction(async () => {
     const session = await requirePermission("reservations.write");
-    await reservationService.updateNotes(id, notes, { id: session.id });
+    await reservationService.updateNotes(id, notes, actor(session));
     refresh();
     return { id };
   });

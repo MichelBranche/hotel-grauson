@@ -102,7 +102,15 @@ Nightly price for a room type, rate plan and night, first match wins:
 
 Restrictions for a stay combine every night: minimum stay is the highest of the plan, the season and `Inventory.minStay`; maximum stay is the lowest. A season marked closed-to-arrival refuses check-in on its nights and closed-to-departure refuses check-out on its days. `Inventory.closed` closes the whole room type for that night, `Rate.closed` closes one plan, and a `RoomBlock` removes one physical room from sale and from the planning board.
 
-Seasons cover nights: start and end are both nights, end inclusive. Overlap policy: a night belongs to at most one season per rate plan, and a season for "all plans" cannot share nights with any other season. The service rejects overlaps on create and edit. Editing or deleting a season never reprices existing reservations; they keep the total stored at booking.
+Seasons cover nights: start and end are both nights, end inclusive. Overlap policy: a night belongs to at most one season per rate plan, and a season for "all plans" cannot share nights with any other season. The service rejects overlaps on create and edit. Editing or deleting a season never reprices existing reservations; they keep the total stored at booking. Changing the dates or room of a reservation does reprice it (`reservationService.move`).
+
+## Reservation lifecycle
+
+Status changes are enforced in `lib/reservation-status.ts`, not only in the UI. Inquiry can become option, confirmed or cancelled. Option can be confirmed or cancelled. Confirmed can check in, cancel or be marked no-show. A checked-in stay can only check out; cancelling it requires an OWNER or ADMIN, a reason, and then the room is marked dirty. Checked-out, cancelled and no-show are terminal apart from notes.
+
+Cancel stores the reason in the notes and frees the room immediately (those statuses do not occupy inventory, and planning hides them). No-show is only from confirmed. Check-in is refused when the room is out of order or in maintenance. Early check-out moves the departure to today in the property timezone so the remaining nights can be sold again; the agreed total is kept, because a minimum-stay rule must not block departure.
+
+Modify (dates, room, guests, rate plan) re-quotes through the pricing engine, scales per-night extras, keeps one-off extras at the stored unit price, and recomputes tax. The dialog shows the total before and after.
 
 ## Security
 
