@@ -17,6 +17,7 @@ export function PaymentChoice({
   depositAmount,
   depositPercent,
   paidOnline,
+  payAtProperty,
 }: {
   code: string;
   status: string;
@@ -27,12 +28,13 @@ export function PaymentChoice({
   depositAmount: number;
   depositPercent: number;
   paidOnline: boolean;
+  payAtProperty: boolean;
 }) {
-  const [confirmed, setConfirmed] = useState(status === "CONFIRMED");
+  const [requested, setRequested] = useState(payAtProperty && status === "OPTION");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<"property" | "card" | null>(null);
 
-  if (confirmed) {
+  if (status === "CONFIRMED") {
     return (
       <section className="rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-surface px-6 py-10 shadow-[var(--shadow-soft)] sm:px-10 sm:py-14">
         <p className="eyebrow text-muted">Soggiorno confermato</p>
@@ -42,6 +44,21 @@ export function PaymentChoice({
           {paidOnline
             ? " L'acconto con carta è stato registrato."
             : " Il pagamento si fa in locanda, alla reception."}
+        </p>
+        <p className="mt-8 text-[0.875rem] text-muted">
+          Per qualsiasi cosa, {hotel.phone} · {hotel.email}
+        </p>
+      </section>
+    );
+  }
+
+  if (requested) {
+    return (
+      <section className="rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-surface px-6 py-10 shadow-[var(--shadow-soft)] sm:px-10 sm:py-14">
+        <p className="eyebrow text-muted">Richiesta inviata</p>
+        <h1 className="display-lg mt-4 max-w-[16ch]">La locanda verifica</h1>
+        <p className="lede mt-5 max-w-[40ch]">
+          Codice {code}. {formatRange(checkIn, checkOut)}. Vi confermiamo il soggiorno se va bene. Il pagamento si fa in locanda, alla reception.
         </p>
         <p className="mt-8 text-[0.875rem] text-muted">
           Per qualsiasi cosa, {hotel.phone} · {hotel.email}
@@ -63,9 +80,11 @@ export function PaymentChoice({
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <div className="rounded-[var(--radius-card)] bg-paper p-5">
-          <h2 className="text-[1rem]">Paga in struttura</h2>
+          <h2 className="font-[family-name:var(--font-sans)]! text-[1rem] leading-snug! font-medium! tracking-normal!">
+            Paga in struttura
+          </h2>
           <p className="mt-2 text-[0.875rem] leading-relaxed text-muted">
-            La reception conferma il soggiorno. Il pagamento si fa in locanda.
+            La reception verifica la richiesta e conferma se va bene. Il pagamento si fa in locanda.
           </p>
           <button
             type="button"
@@ -81,16 +100,18 @@ export function PaymentChoice({
                   setError(result.error);
                   return;
                 }
-                setConfirmed(true);
+                setRequested(true);
               });
             }}
           >
-            {pending === "property" ? "Conferma…" : "Paga in struttura"}
+            {pending === "property" ? "Invio…" : "Paga in struttura"}
           </button>
         </div>
 
         <div className="rounded-[var(--radius-card)] bg-paper p-5">
-          <h2 className="text-[1rem]">Paga online con carta</h2>
+          <h2 className="font-[family-name:var(--font-sans)]! text-[1rem] leading-snug! font-medium! tracking-normal!">
+            Paga online con carta
+          </h2>
           <p className="mt-2 text-[0.875rem] leading-relaxed text-muted">
             {depositPercent < 100
               ? `Acconto ${formatMoneyExact(depositAmount)}. Il resto si salda in locanda.`

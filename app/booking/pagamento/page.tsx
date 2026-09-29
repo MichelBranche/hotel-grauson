@@ -33,6 +33,7 @@ export default async function BookingPaymentPage({
             depositAmount={booking.depositAmount}
             depositPercent={booking.depositPercent}
             paidOnline={booking.paidOnline}
+            payAtProperty={booking.payAtProperty}
           />
         ) : (
           <div className="max-w-[40rem] rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-surface px-6 py-10 shadow-[var(--shadow-soft)] sm:px-10">

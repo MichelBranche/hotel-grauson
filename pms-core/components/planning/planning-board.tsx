@@ -87,12 +87,16 @@ function Block({
         background: reservation.color,
         transform: CSS.Translate.toString(transform),
       }}
-      title={`${reservation.guestName} · ${reservation.roomNumber} · ${reservation.checkIn} → ${reservation.checkOut}`}
+      title={`${reservation.guestName} · ${reservation.roomNumber} · ${reservation.checkIn} → ${reservation.checkOut}${
+        reservation.status === "OPTION" && reservation.payAtProperty ? " · Richiesta web, paga in struttura" : ""
+      }`}
     >
       {reservation.vip ? <span className="text-[10px]">VIP</span> : null}
       <span className="min-w-0 truncate font-medium">{reservation.guestName}</span>
       <span className="hidden truncate text-[11px] opacity-70 lg:inline">{reservation.adults + reservation.children} ospiti</span>
-      <span className="ml-auto hidden text-[10px] opacity-70 xl:inline">{meta.label}</span>
+      <span className="ml-auto hidden text-[10px] opacity-70 xl:inline">
+        {reservation.status === "OPTION" && reservation.payAtProperty ? "Richiesta web" : meta.label}
+      </span>
       <span
         role="separator"
         aria-label="Modifica check-out"

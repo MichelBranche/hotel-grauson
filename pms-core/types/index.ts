@@ -43,6 +43,8 @@ export type PlanningReservation = {
   total: number;
   currency: string;
   notes: string;
+  /** Website OPTION whose guest asked to pay at the property. */
+  payAtProperty?: boolean;
   vip: boolean;
   color: string;
 };

@@ -5,6 +5,8 @@ import { defaultPropertyId } from "@pms-core/integrations/booking-engine";
 import { depositCents, depositEuros, chargedDepositPercent } from "@pms-core/lib/deposit";
 import { toISODate } from "@pms-core/lib/dates";
 import { DomainError } from "@pms-core/lib/errors";
+import { PAY_AT_PROPERTY_NOTE, chosePayAtProperty } from "@pms-core/lib/pay-at-property";
+import { appendReservationNote } from "@pms-core/lib/reservation-status";
 import { appBaseUrl, stripeClient } from "@pms-core/lib/stripe";
 import { auditService } from "@pms-core/services/audit.service";
 import { reservationService } from "@pms-core/services/reservation.service";
@@ -143,17 +145,23 @@ export async function publicBookingByCode(code: string) {
     depositAmount: depositEuros(reservation.total, depositPercent),
     depositPercent: chargedDepositPercent(depositPercent),
     paidOnline: reservation.payments.some((item) => item.method === "ONLINE" && item.status === "COMPLETED"),
+    notes: reservation.notes,
+    payAtProperty: chosePayAtProperty(reservation.notes),
   };
 }
 
-export async function confirmPayAtProperty(code: string) {
+/** Records pay-at-property on the website hold. Status stays OPTION and no payment is created. */
+export async function requestPayAtProperty(code: string) {
   const booking = await publicBookingByCode(code);
   if (!booking) throw new DomainError("Non troviamo questa prenotazione.");
-  if (booking.status === "CONFIRMED") return { code: booking.code };
   if (booking.status !== "OPTION") {
-    throw new DomainError("Questa prenotazione non si può confermare da qui.");
+    throw new DomainError("Questa prenotazione non è in attesa di conferma.");
   }
-  await reservationService.updateStatus(booking.id, "CONFIRMED", { name: "booking-engine" });
+  if (!booking.payAtProperty) {
+    await reservationService.updateNotes(booking.id, appendReservationNote(booking.notes, PAY_AT_PROPERTY_NOTE), {
+      name: "booking-engine",
+    });
+  }
   return { code: booking.code };
 }
 

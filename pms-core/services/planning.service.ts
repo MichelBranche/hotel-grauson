@@ -4,6 +4,7 @@ import { prisma } from "@pms-core/database/client";
 import { planningStatuses } from "@pms-core/config/status";
 import { toDate, toISODate } from "@pms-core/lib/dates";
 import { guestDisplay } from "@pms-core/lib/utils";
+import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
 import { planningColor } from "@pms-core/lib/planning-color";
 import type { PlanningData, PlanningReservation } from "@pms-core/types";
 
@@ -62,6 +63,7 @@ export const planningService = {
           total: reservation.total,
           currency: reservation.currency,
           notes: reservation.notes,
+          payAtProperty: isPayAtPropertyRequest(reservation),
           vip: reservation.vip,
           color: planningColor(reservation.id),
         }),
