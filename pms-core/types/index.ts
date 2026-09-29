@@ -84,6 +84,7 @@ export type AvailabilityOffer = {
     code: string;
     name: string;
     refundable: boolean;
+    depositPercent: number;
     nightly: number;
     total: number;
     minimumStay: number;

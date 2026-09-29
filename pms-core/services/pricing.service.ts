@@ -84,6 +84,7 @@ function toPricingPlan(plan: {
   maximumStay: number | null;
   closedToArrival: boolean;
   closedToDeparture: boolean;
+  depositPercent: number;
 }): PricingPlan {
   return {
     id: plan.id,
@@ -94,6 +95,7 @@ function toPricingPlan(plan: {
     maximumStay: plan.maximumStay,
     closedToArrival: plan.closedToArrival,
     closedToDeparture: plan.closedToDeparture,
+    depositPercent: plan.depositPercent,
   };
 }
 

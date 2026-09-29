@@ -20,6 +20,7 @@ const plan: PricingPlan = {
   maximumStay: null,
   closedToArrival: false,
   closedToDeparture: false,
+  depositPercent: 0,
 };
 
 const natale: PricingSeason = {

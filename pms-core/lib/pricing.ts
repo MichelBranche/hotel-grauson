@@ -30,6 +30,7 @@ export type PricingPlan = {
   maximumStay: number | null;
   closedToArrival: boolean;
   closedToDeparture: boolean;
+  depositPercent: number;
 };
 
 export type PricingSeason = {

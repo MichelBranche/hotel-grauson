@@ -31,7 +31,7 @@ export async function createReservation(draft: Omit<ReservationDraft, "source" |
       ...draft,
       source: draft.source ?? "website",
       channel: "DIRECT",
-      status: "CONFIRMED",
+      status: draft.status ?? "OPTION",
     },
     { name: "booking-engine" },
   );
