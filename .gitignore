@@ -34,12 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
-# pms local database
+# local sqlite leftovers — the app uses Supabase Postgres
 *.db
 *.db-journal
 *.db-wal
-pms-core/prisma/dev.db
-!pms-core/prisma/demo.db
 
 # vercel
 .vercel

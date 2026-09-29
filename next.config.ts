@@ -3,9 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Pin the workspace root so an unrelated lockfile further up the tree is ignored.
   turbopack: { root: __dirname },
-  outputFileTracingIncludes: {
-    "/*": ["./pms-core/prisma/demo.db"],
-  },
   images: {
     formats: ["image/avif", "image/webp"],
     // 95 for the home hero on retina; 88 for other heroes; 75 elsewhere.

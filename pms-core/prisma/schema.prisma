@@ -3,8 +3,9 @@ generator client {
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
+/// Direct Supabase Postgres session URI (port 5432). One URL for the client and migrations.
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

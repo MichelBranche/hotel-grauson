@@ -52,15 +52,19 @@ Next.js route files live in `/app/pms` and `/app/booking`. They are thin wrapper
 
 ## Database
 
-Prisma + SQLite by default (`DATABASE_URL=file:./dev.db`), so the project stays self-contained without a remote database or Docker.
+Prisma + Supabase Postgres. `DATABASE_URL` is the direct session URI on port 5432 (`db.<project-ref>.supabase.co`). The schema does not use `DIRECT_URL`.
 
-The schema is written so it can move to PostgreSQL:
+```bash
+npm run db:generate
+npx prisma migrate deploy --schema pms-core/prisma/schema.prisma
+npm run db:seed
+```
 
-1. Change `provider = "postgresql"` in `prisma/schema.prisma`
-2. Point `DATABASE_URL` at Postgres
-3. Run `npm run db:migrate`
+`npm run db:seed` upserts the organization, the property, and one OWNER user. Rooms, rates, guests, and bookings stay empty. `npm run db:seed:demo` loads a fictional local dataset and must not run in production.
 
-Entities include Organization, Property, User, Room, RoomType, Guest, Reservation, RatePlan, Inventory, Payment, Extra, HousekeepingTask, Notification, AuditLog, and Channel* tables for a future channel manager.
+The Postgres baseline is `pms-core/prisma/migrations/*_init_postgres`. The old SQLite history is archived in `pms-core/prisma/migrations_sqlite_backup` and is not applied.
+
+Entities include Organization, Property, User, Room, RoomType, Guest, Reservation, RatePlan, Inventory, Payment, Extra, HousekeepingTask, Notification, AuditLog, and Channel* tables for a future channel manager. Row Level Security is enabled on those tables with no Data API policies: the app talks to Postgres through Prisma, not through the Supabase Data API.
 
 ## Authentication
 
@@ -70,12 +74,7 @@ Roles: OWNER, ADMIN, MANAGER, RECEPTIONIST, HOUSEKEEPING, READ_ONLY.
 
 Permissions live in `config/permissions.ts`. Do not scatter `if (role === ...)` checks.
 
-Seeded owner:
-
-```
-michel.branche@grauson.local
-Grauson2026!
-```
+The clean seed creates one OWNER. Set `SEED_OWNER_EMAIL` and `SEED_OWNER_PASSWORD` in `.env` before the first `npm run db:seed`. Change the password after the first login. The password is not printed and is not stored in the repo.
 
 ## Planning
 
@@ -105,7 +104,7 @@ The public `/booking` page uses the same functions. There is no second reservati
 cp .env.example .env
 npm install
 npm run db:generate
-npm run db:migrate
+npx prisma migrate deploy --schema pms-core/prisma/schema.prisma
 npm run db:seed
 npm run dev
 ```
@@ -115,8 +114,10 @@ Open `/pms/login` and `/booking`.
 Scripts:
 
 - `npm run db:generate`
-- `npm run db:migrate`
-- `npm run db:seed`
+- `npm run db:migrate:deploy` — apply committed migrations (use this against Supabase)
+- `npm run db:migrate` — `prisma migrate dev` for later schema changes
+- `npm run db:seed` — organization, property, one owner
+- `npm run db:seed:demo` — local fictional data only
 - `npm run db:studio`
 - `npm run typecheck`
 - `npm run lint`
@@ -125,15 +126,16 @@ Scripts:
 ## Environment
 
 ```
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://postgres:PASSWORD@db.<project-ref>.supabase.co:5432/postgres"
 AUTH_SECRET="long-random-string"
+SEED_OWNER_PASSWORD="set-a-temporary-password"
 ```
 
-Do not commit secrets.
+Do not commit `.env` or passwords. `AUTH_SECRET` is required; there is no demo fallback.
 
 ## Deployment
 
-Deploy as the same Next.js app as the hotel website. The current Vercel deploy is a demonstration: it signs sessions with a fallback `AUTH_SECRET` and copies the committed SQLite snapshot `prisma/demo.db` into `/tmp`. Writes do not persist across instances. When the product is confirmed, switch the Prisma provider to PostgreSQL, set `DATABASE_URL` and `AUTH_SECRET`, and remove the demo fallback. Keep one app, one database, one PMS.
+Deploy as the same Next.js app as the hotel website. Set `DATABASE_URL` and `AUTH_SECRET` on Vercel. Keep one app, one Postgres database, one PMS. Do not point production at a SQLite file.
 
 ## HOW TO EXTRACT PMS CORE
 
@@ -145,8 +147,8 @@ Deploy as the same Next.js app as the hotel website. The current Vercel deploy i
 6. Set `DATABASE_URL` and `AUTH_SECRET`.
 7. Edit `pms-core/config/property.ts` and `pms-core/config/branding.ts`.
 8. Replace `pms-core/branding/sidebar.jpg` and `public/brand/pms/sidebar.jpg`.
-9. Adapt `pms-core/seed/index.ts` to the new rooms and rate plans.
-10. Run `npm run db:migrate` and `npm run db:seed`.
+9. Adapt `pms-core/seed/index.ts` (clean owner seed) or `pms-core/seed/demo.ts` (local fictional data) to the new property.
+10. Run `npx prisma migrate deploy --schema pms-core/prisma/schema.prisma` and `npm run db:seed`.
 11. Point the new public site at `getAvailability` / `createReservation`.
 12. Start the app and open `/pms/login`.
 

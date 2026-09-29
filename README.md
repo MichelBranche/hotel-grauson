@@ -34,7 +34,7 @@ Dettaglio architettura, estrazione e schema: [`pms-core/README.md`](./pms-core/R
 | App | Next.js 16 (App Router), React 19, TypeScript |
 | Stile | Tailwind CSS 4, CSS tokens di marca |
 | Motion | GSAP + `@gsap/react`, Lenis |
-| Dati | Prisma 6, SQLite in locale (schema pronto per PostgreSQL) |
+| Dati | Prisma 6, PostgreSQL su Supabase |
 | PMS UI | Radix, TanStack Query, dnd-kit, Recharts, react-hook-form, Zod |
 | Auth | jose (JWT), bcryptjs |
 | Hosting | Vercel, `@vercel/analytics` |
@@ -45,15 +45,19 @@ Alias: `@/*` root del sito, `@pms-core/*` modulo PMS.
 
 ```bash
 cp .env.example .env
+```
+
+In `.env` (solo in locale, non va committato) imposta `DATABASE_URL` con la session URI Postgres di Supabase e un `AUTH_SECRET` lungo e casuale. Per il primo seed imposta anche `SEED_OWNER_PASSWORD` (password temporanea, da cambiare dopo il primo accesso).
+
+```bash
 npm install
-npm run db:migrate
+npm run db:generate
+npx prisma migrate deploy --schema pms-core/prisma/schema.prisma
 npm run db:seed
 npm run dev
 ```
 
-Apri [http://localhost:3000](http://localhost:3000).
-
-Login demo PMS: `michel.branche@grauson.local` / `Grauson2026!`
+Apri [http://localhost:3000](http://localhost:3000). Il login PMS usa l'email e la password definite in `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD`. La password non è nel repository.
 
 ## Route
 
@@ -71,20 +75,29 @@ npm run dev
 npm run build
 npm run lint
 npm run typecheck
-npm run db:migrate
+npm run db:generate
+npm run db:migrate:deploy
 npm run db:seed
+npm run db:seed:demo
 npm run db:studio
-npm run db:reset
 ```
+
+`npm run db:seed` crea l'organizzazione, la property e un solo utente OWNER. Camere, tariffe e prenotazioni restano vuote. `npm run db:seed:demo` sostituisce i dati con un dataset fittizio ed è solo per uso locale.
+
+`npm run db:migrate` (`prisma migrate dev`) serve alle modifiche successive dello schema. Il primo allineamento su Supabase è `migrate deploy`: la migration `init_postgres` è già nel repo e Supabase non ospita lo shadow database di Prisma. Non eseguire `npm run db:reset` sul progetto Supabase: cancella i dati.
 
 ## Ambiente
 
 ```
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://postgres:PASSWORD@db.wmtuojolspyidnhhyruc.supabase.co:5432/postgres"
 AUTH_SECRET="long-random-string"
+SEED_OWNER_EMAIL="owner@grauson.local"
+SEED_OWNER_PASSWORD="set-a-temporary-password"
 ```
 
-Il deploy Vercel attuale è una demo: sessione con secret di fallback e snapshot SQLite `pms-core/prisma/demo.db` in `/tmp` (le scritture non restano tra le instance). Per produzione: PostgreSQL, `DATABASE_URL` e `AUTH_SECRET` veri.
+Database locale e di produzione: Postgres su Supabase (progetto `hotel-grauson`, region `eu-west-2`). Una sola `DATABASE_URL` sulla porta 5432 (connessione diretta): Prisma non richiede `DIRECT_URL`. Sostituisci `PASSWORD` nel `.env` locale. Non committare `.env`.
+
+Su Vercel imposta le stesse variabili `DATABASE_URL` e `AUTH_SECRET`, senza valori di esempio. Se il runtime non raggiunge l'host diretto `db.<ref>.supabase.co` (spesso solo IPv6), usa al suo posto la session URI del pooler Supavisor, sempre sulla porta 5432, sempre in `DATABASE_URL`. Il pooler in transaction mode (porta 6543) non è configurato qui.
 
 ## Deploy
 
