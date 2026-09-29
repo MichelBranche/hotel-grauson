@@ -1,5 +1,7 @@
 import type { Prisma, ReservationStatus, RoomStatus, UserRole } from "@prisma/client";
 
+import { after } from "next/server";
+
 import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
 import { propertyConfig } from "@pms-core/config/property";
@@ -68,6 +70,14 @@ async function nextCode(tx: Prisma.TransactionClient, propertyId: string) {
   const settings = parseJson<{ reservationPrefix?: string }>(property.settings, {});
   const prefix = settings.reservationPrefix ?? "BK";
   return `${prefix}-${year}-${property.reservationSeq}`;
+}
+
+function defer(task: () => Promise<unknown>) {
+  try {
+    after(() => task().catch((error) => console.error("Deferred PMS notification failed.", error)));
+  } catch {
+    void task().catch((error) => console.error("Deferred PMS notification failed.", error));
+  }
 }
 
 async function loadTaxRate(propertyId: string) {
@@ -315,19 +325,44 @@ export const reservationService = {
         after: { code, roomId: room.id, checkIn: draft.checkIn, checkOut: draft.checkOut },
       });
 
-      return created;
+      return { created, guest, code };
     });
 
-    await notificationService.create({
-      propertyId: draft.propertyId,
-      type: "reservation.created",
-      title: "Nuova prenotazione",
-      body: `${draft.guest.lastName} ${draft.guest.firstName} · camera ${room.number} · ${draft.checkIn} → ${draft.checkOut}`,
-      entity: "Reservation",
-      entityId: reservation.id,
-    });
+    defer(() =>
+      notificationService.create({
+        propertyId: draft.propertyId,
+        type: "reservation.created",
+        title: "Nuova prenotazione",
+        body: `${draft.guest.lastName} ${draft.guest.firstName} · camera ${room.number} · ${draft.checkIn} → ${draft.checkOut}`,
+        entity: "Reservation",
+        entityId: reservation.created.id,
+      }),
+    );
 
-    return reservationRepo.findById(reservation.id);
+    return {
+      id: reservation.created.id,
+      code: reservation.code,
+      status: reservation.created.status,
+      roomId: room.id,
+      roomNumber: room.number,
+      roomTypeName: room.roomType.name,
+      guestId: reservation.guest.id,
+      guestName: guestDisplay(reservation.guest.firstName, reservation.guest.lastName),
+      guestFirstName: reservation.guest.firstName,
+      guestLastName: reservation.guest.lastName,
+      ratePlanId: quote.ratePlanId,
+      email: reservation.guest.email,
+      phone: reservation.guest.phone,
+      adults: draft.adults,
+      children: draft.children ?? 0,
+      checkIn: draft.checkIn,
+      checkOut: draft.checkOut,
+      nights: quote.nights,
+      total: quote.total,
+      currency: "EUR" as const,
+      notes: draft.notes ?? "",
+      vip: draft.guest.vip ?? false,
+    };
   },
 
   async previewChange(id: string, input: ReservationChange) {
@@ -339,19 +374,17 @@ export const reservationService = {
   },
 
   async move(id: string, input: ReservationChange, actor: Actor = {}) {
-    const existing = await reservationRepo.findById(id);
-    if (!existing) throw new DomainError("Prenotazione non trovata.");
-    const unchanged =
-      input.roomId === existing.roomId &&
-      input.checkIn === toISODate(existing.checkIn) &&
-      input.checkOut === toISODate(existing.checkOut) &&
-      (input.adults === undefined || input.adults === existing.adults) &&
-      (input.children === undefined || input.children === existing.children) &&
-      (input.ratePlanId === undefined || !input.ratePlanId || input.ratePlanId === existing.ratePlanId) &&
-      !input.guest;
-    if (unchanged) return { ...summarize(existing), previousTotal: existing.total };
-
     const { current, room, priced, adults, children } = await prepareChange(id, input);
+    const unchanged =
+      input.roomId === current.roomId &&
+      input.checkIn === toISODate(current.checkIn) &&
+      input.checkOut === toISODate(current.checkOut) &&
+      adults === current.adults &&
+      children === current.children &&
+      priced.ratePlanId === current.ratePlanId &&
+      !input.guest;
+    if (unchanged) return { ...summarize(current), previousTotal: current.total };
+
     const before = {
       roomId: current.roomId,
       roomNumber: current.room.number,
@@ -413,21 +446,62 @@ export const reservationService = {
       });
     });
 
-    await notificationService.create({
-      propertyId: current.propertyId,
-      type: "reservation.modified",
-      title: "Prenotazione modificata",
-      body: `${current.code}: ${formatMoneyExact(before.total)} → ${formatMoneyExact(priced.total)} · camera ${room.number}`,
-      entity: "Reservation",
-      entityId: id,
-    });
+    defer(() =>
+      notificationService.create({
+        propertyId: current.propertyId,
+        type: "reservation.modified",
+        title: "Prenotazione modificata",
+        body: `${current.code}: ${formatMoneyExact(before.total)} → ${formatMoneyExact(priced.total)} · camera ${room.number}`,
+        entity: "Reservation",
+        entityId: id,
+      }),
+    );
 
-    const saved = await reservationRepo.findById(id);
-    return { ...summarize(saved!), previousTotal: before.total };
+    const guestFirstName = input.guest?.firstName.trim() || current.guest.firstName;
+    const guestLastName = input.guest?.lastName.trim() || current.guest.lastName;
+    return {
+      ...summarize(current),
+      roomId: room.id,
+      roomNumber: room.number,
+      roomTypeName: room.roomType.name,
+      checkIn: input.checkIn,
+      checkOut: input.checkOut,
+      nights: priced.nights,
+      adults,
+      children,
+      ratePlanId: priced.ratePlanId,
+      total: priced.total,
+      roomRate: priced.roomRate,
+      extrasTotal: priced.extrasTotal,
+      taxesTotal: priced.taxesTotal,
+      guestName: guestDisplay(guestFirstName, guestLastName),
+      guestFirstName,
+      guestLastName,
+      email: input.guest ? input.guest.email?.trim() || null : current.guest.email,
+      phone: input.guest ? input.guest.phone?.trim() || null : current.guest.phone,
+      previousTotal: before.total,
+    };
   },
 
   async updateStatus(id: string, status: ReservationStatus, actor: Actor = {}, options?: { reason?: string; force?: boolean }) {
-    const current = await reservationRepo.findById(id);
+    const current = await prisma.reservation.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        notes: true,
+        propertyId: true,
+        roomId: true,
+        code: true,
+        total: true,
+        nights: true,
+        checkIn: true,
+        checkOut: true,
+        guest: { select: { firstName: true, lastName: true } },
+        room: { select: { number: true, status: true } },
+        property: { select: { timezone: true } },
+      },
+    });
     if (!current) throw new DomainError("Prenotazione non trovata.");
 
     const forceCancel = status === "CANCELLED" && Boolean(options?.force);
@@ -445,8 +519,7 @@ export const reservationService = {
       if (blocked) throw new DomainError(blocked);
     }
 
-    const { timezone } = await loadTaxRate(current.propertyId);
-    const today = todayInTimeZone(timezone);
+    const today = todayInTimeZone(current.property.timezone || propertyConfig.timezone);
     const checkIn = toISODate(current.checkIn);
     const departure = status === "CHECKED_OUT" ? earlyCheckout(checkIn, toISODate(current.checkOut), today) : null;
     const wasInHouse = current.status === "CHECKED_IN";
@@ -498,14 +571,16 @@ export const reservationService = {
     });
 
     if (status === "CANCELLED" || status === "NO_SHOW") {
-      await notificationService.create({
-        propertyId: current.propertyId,
-        type: status === "CANCELLED" ? "reservation.cancelled" : "reservation.no_show",
-        title: status === "CANCELLED" ? "Prenotazione cancellata" : "No-show",
-        body: `${current.code} · ${current.guest.lastName} ${current.guest.firstName}`,
-        entity: "Reservation",
-        entityId: id,
-      });
+      defer(() =>
+        notificationService.create({
+          propertyId: current.propertyId,
+          type: status === "CANCELLED" ? "reservation.cancelled" : "reservation.no_show",
+          title: status === "CANCELLED" ? "Prenotazione cancellata" : "No-show",
+          body: `${current.code} · ${current.guest.lastName} ${current.guest.firstName}`,
+          entity: "Reservation",
+          entityId: id,
+        }),
+      );
     }
 
     const message =

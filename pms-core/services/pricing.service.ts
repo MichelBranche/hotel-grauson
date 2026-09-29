@@ -18,21 +18,34 @@ import {
  * departure day's closed-to-departure rule is visible).
  */
 export async function loadPricingContext(propertyId: string, from: string, to: string): Promise<PricingContext> {
-  const [roomTypes, plans, planPrices, dailyRates, inventory, seasons] = await Promise.all([
-    prisma.roomType.findMany({ where: { propertyId }, select: { id: true, name: true, basePrice: true } }),
-    prisma.ratePlan.findMany({ where: { propertyId, active: true }, orderBy: { createdAt: "asc" } }),
-    prisma.ratePlanPrice.findMany({ where: { ratePlan: { propertyId } } }),
-    prisma.rate.findMany({
-      where: { ratePlan: { propertyId }, date: { gte: toDate(from), lt: toDate(addDaysISO(to, 1)) } },
-    }),
-    prisma.inventory.findMany({
-      where: { propertyId, date: { gte: toDate(from), lt: toDate(addDaysISO(to, 1)) } },
-    }),
-    prisma.rateSeason.findMany({
-      where: { propertyId, startDate: { lte: toDate(to) }, endDate: { gte: toDate(from) } },
-      include: { prices: true },
-    }),
-  ]);
+  const nightStart = toDate(from);
+  const nightEnd = toDate(addDaysISO(to, 1));
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: {
+      roomTypes: { select: { id: true, name: true, basePrice: true } },
+      ratePlans: {
+        where: { active: true },
+        orderBy: { createdAt: "asc" },
+        include: {
+          prices: true,
+          rates: { where: { date: { gte: nightStart, lt: nightEnd } } },
+        },
+      },
+      rateSeasons: {
+        where: { startDate: { lte: toDate(to) }, endDate: { gte: nightStart } },
+        include: { prices: true },
+      },
+      inventory: { where: { date: { gte: nightStart, lt: nightEnd } } },
+    },
+  });
+  if (!property) throw new DomainError("Struttura non trovata.");
+  const roomTypes = property.roomTypes;
+  const plans = property.ratePlans;
+  const planPrices = plans.flatMap((plan) => plan.prices);
+  const dailyRates = plans.flatMap((plan) => plan.rates);
+  const inventory = property.inventory;
+  const seasons = property.rateSeasons;
 
   return {
     roomTypes: new Map(roomTypes.map((type) => [type.id, type])),

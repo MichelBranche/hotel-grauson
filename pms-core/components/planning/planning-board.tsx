@@ -22,6 +22,7 @@ import { ReservationDrawer } from "@pms-core/components/planning/reservation-dra
 import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
 import { addDaysISO, eachISODate, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
+import { planningColor } from "@pms-core/lib/planning-color";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import { cn } from "@pms-core/lib/utils";
 import type { PlanningData, PlanningReservation, PlanningView } from "@pms-core/types";
@@ -185,7 +186,10 @@ export function PlanningBoard({
   }
 
   function onDeskChanged(patch?: StayPatch) {
-    if (patch && selectedId) applyStayPatch(selectedId, patch);
+    if (patch && selectedId) {
+      applyStayPatch(selectedId, patch);
+      return;
+    }
     void refreshBoard();
   }
 
@@ -540,14 +544,20 @@ export function PlanningBoard({
                 : item,
             ),
           }));
-          void refreshBoard();
         }}
       />
       <NewReservationWizard
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         extras={extras}
-        onCreated={() => refreshBoard()}
+        onCreated={(stay) => {
+          setData((current) => ({
+            ...current,
+            reservations: current.reservations.some((item) => item.id === stay.id)
+              ? current.reservations
+              : [...current.reservations, { ...stay, color: planningColor(stay.id) }],
+          }));
+        }}
       />
     </div>
   );

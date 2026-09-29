@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import type { ReservationStatus } from "@prisma/client";
@@ -20,7 +21,15 @@ const staySchema = z.object({
 });
 
 function refresh() {
-  revalidatePath("/pms", "layout");
+  // After the response, so a layout render cannot hold the save or turn a
+  // committed write into a client failure.
+  try {
+    after(() => {
+      revalidatePath("/pms", "layout");
+    });
+  } catch (error) {
+    console.error("Revalidate skipped after a committed reservation change.", error);
+  }
 }
 
 function actor(session: SessionUser) {
@@ -61,7 +70,7 @@ export async function createReservationAction(input: {
       actor(session),
     );
     refresh();
-    return { id: reservation?.id, code: reservation?.code };
+    return reservation;
   });
 }
 

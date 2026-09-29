@@ -4,14 +4,8 @@ import { prisma } from "@pms-core/database/client";
 import { planningStatuses } from "@pms-core/config/status";
 import { toDate, toISODate } from "@pms-core/lib/dates";
 import { guestDisplay } from "@pms-core/lib/utils";
+import { planningColor } from "@pms-core/lib/planning-color";
 import type { PlanningData, PlanningReservation } from "@pms-core/types";
-
-const BLOCK_COLORS = ["#dce8dc", "#d7e4f2", "#f3dce3", "#efe6c9", "#e4ddd2", "#d9ebe4"];
-
-function colorFor(id: string) {
-  const index = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return BLOCK_COLORS[index % BLOCK_COLORS.length];
-}
 
 export const planningService = {
   async get(propertyId: string, from: string, to: string): Promise<PlanningData> {
@@ -69,7 +63,7 @@ export const planningService = {
           currency: reservation.currency,
           notes: reservation.notes,
           vip: reservation.vip,
-          color: colorFor(reservation.id),
+          color: planningColor(reservation.id),
         }),
       ),
       blocks: blocks.map((block) => ({

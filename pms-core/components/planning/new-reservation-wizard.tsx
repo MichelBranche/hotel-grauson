@@ -8,7 +8,7 @@ import { Button } from "@pms-core/components/ui/button";
 import { Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Textarea } from "@pms-core/components/ui/input";
 import { formatMoney } from "@pms-core/lib/money";
-import type { AvailabilityOffer, AvailabilityResult } from "@pms-core/types";
+import type { AvailabilityOffer, AvailabilityResult, PlanningReservation } from "@pms-core/types";
 
 const steps = [
   "Date",
@@ -37,7 +37,7 @@ export function NewReservationWizard({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   extras: { id: string; name: string; price: number }[];
-  onCreated: () => void | Promise<void>;
+  onCreated: (stay: Omit<PlanningReservation, "color">) => void | Promise<void>;
 }) {
   const [step, setStep] = useState(0);
   const [checkIn, setCheckIn] = useState("");
@@ -119,7 +119,7 @@ export function NewReservationWizard({
     }
     setCode(result.data.code ?? result.data.id ?? "");
     setStep(8);
-    await onCreated();
+    await onCreated(result.data);
     setPending(null);
   }
 
