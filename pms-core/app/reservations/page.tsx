@@ -2,8 +2,11 @@ import Link from "next/link";
 
 import { requirePermission } from "@pms-core/auth/guards";
 import { reservationStatusMeta } from "@pms-core/config/status";
+import { propertyConfig } from "@pms-core/config/property";
 import { StatusBadge } from "@pms-core/components/ui/badge";
+import { prisma } from "@pms-core/database/client";
 import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
+import { optionExpiryLabel } from "@pms-core/lib/option-hold";
 import { reservationService } from "@pms-core/services/reservation.service";
 import { toISODate } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
@@ -25,9 +28,12 @@ export default async function ReservationsPage({
   const session = await requirePermission("reservations.read");
   const { room, coda } = await searchParams;
   const queue = coda === "web";
-  const listed = (await reservationService.list(session.propertyId)).filter((item) =>
-    room ? item.room.number === room : true,
-  );
+  const [rows, property] = await Promise.all([
+    reservationService.list(session.propertyId),
+    prisma.property.findUnique({ where: { id: session.propertyId }, select: { timezone: true } }),
+  ]);
+  const timeZone = property?.timezone || propertyConfig.timezone;
+  const listed = rows.filter((item) => (room ? item.room.number === room : true));
   const webRequests = listed.filter((item) => isPayAtPropertyRequest(item));
   const reservations = queue ? webRequests : listed;
 
@@ -78,27 +84,31 @@ export default async function ReservationsPage({
             </tr>
           </thead>
           <tbody>
-            {reservations.map((reservation) => (
-              <tr key={reservation.id} className="border-t border-[var(--pms-line)]">
-                <td className="px-4 py-3">
-                  <Link href={`/pms/reservations/${reservation.id}`} className="underline-offset-2 hover:underline">
-                    {reservation.code}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">{guestDisplay(reservation.guest.firstName, reservation.guest.lastName)}</td>
-                <td className="px-4 py-3">{reservation.room.number}</td>
-                <td className="px-4 py-3">
-                  {toISODate(reservation.checkIn)} → {toISODate(reservation.checkOut)}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex flex-wrap items-center gap-2">
-                    <StatusBadge label={reservationStatusMeta[reservation.status].label} tone={reservationStatusMeta[reservation.status].tone} />
-                    {isPayAtPropertyRequest(reservation) ? <StatusBadge label="Richiesta web" tone="amber" /> : null}
-                  </span>
-                </td>
-                <td className="px-4 py-3">{formatMoney(reservation.total, reservation.currency)}</td>
-              </tr>
-            ))}
+            {reservations.map((reservation) => {
+              const expires = optionExpiryLabel({ status: reservation.status, createdAt: reservation.createdAt, timeZone });
+              return (
+                <tr key={reservation.id} className="border-t border-[var(--pms-line)]">
+                  <td className="px-4 py-3">
+                    <Link href={`/pms/reservations/${reservation.id}`} className="underline-offset-2 hover:underline">
+                      {reservation.code}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">{guestDisplay(reservation.guest.firstName, reservation.guest.lastName)}</td>
+                  <td className="px-4 py-3">{reservation.room.number}</td>
+                  <td className="px-4 py-3">
+                    {toISODate(reservation.checkIn)} → {toISODate(reservation.checkOut)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <StatusBadge label={reservationStatusMeta[reservation.status].label} tone={reservationStatusMeta[reservation.status].tone} />
+                      {isPayAtPropertyRequest(reservation) ? <StatusBadge label="Richiesta web" tone="amber" /> : null}
+                    </span>
+                    {expires ? <p className="mt-1 text-xs text-[var(--pms-muted)]">{expires}</p> : null}
+                  </td>
+                  <td className="px-4 py-3">{formatMoney(reservation.total, reservation.currency)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

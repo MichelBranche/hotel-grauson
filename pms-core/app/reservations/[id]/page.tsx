@@ -9,6 +9,7 @@ import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
 import { todayInTimeZone, toISODate } from "@pms-core/lib/dates";
 import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
+import { optionExpiryLabel } from "@pms-core/lib/option-hold";
 import { roundMoney } from "@pms-core/lib/money";
 import { guestDisplay, parseJson } from "@pms-core/lib/utils";
 import { auditService } from "@pms-core/services/audit.service";
@@ -40,6 +41,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
     prisma.property.findUnique({ where: { id: reservation.propertyId }, select: { timezone: true } }),
   ]);
 
+  const timeZone = property?.timezone || propertyConfig.timezone;
   const paid = roundMoney(reservation.payments.reduce((sum, payment) => sum + payment.amount, 0));
   const view: PlanningReservation = {
     id: reservation.id,
@@ -97,7 +99,8 @@ export default async function ReservationDetailPage({ params }: { params: Promis
           rooms={planningRooms}
           plans={plans}
           extras={extras}
-          businessToday={todayInTimeZone(property?.timezone || propertyConfig.timezone)}
+          businessToday={todayInTimeZone(timeZone)}
+          expiresLabel={optionExpiryLabel({ status: reservation.status, createdAt: reservation.createdAt, timeZone })}
           balance={roundMoney(Math.max(0, reservation.total - paid))}
           permissions={{
             canWrite: can(session.role, "reservations.write"),
