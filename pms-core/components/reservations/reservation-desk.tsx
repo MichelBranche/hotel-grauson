@@ -109,6 +109,7 @@ export function ReservationDesk({
         nights: patch.nights,
         balance: Math.max(0, patch.total - current.paid),
       }));
+      return;
     }
     router.refresh();
   }
@@ -152,6 +153,7 @@ export function ReservationDesk({
           roomStatus: live.roomStatus,
           checkIn: reservation.checkIn,
           checkOut: live.checkOut,
+          nights: live.nights,
           balance: live.balance,
         }}
         extras={extras}
@@ -186,6 +188,7 @@ export function ReservationDesk({
         reservation={reservation}
         rooms={rooms}
         plans={plans}
+        onCommitted={() => router.refresh()}
         onSaved={(next) => {
           const priceNote =
             next.previousTotal === next.total
@@ -205,7 +208,6 @@ export function ReservationDesk({
             guestName: next.guestName,
             balance: Math.max(0, next.total - current.paid),
           }));
-          router.refresh();
         }}
       />
     </section>

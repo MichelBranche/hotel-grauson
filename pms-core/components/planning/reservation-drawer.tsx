@@ -98,6 +98,7 @@ export function ReservationDrawer({
             roomStatus,
             checkIn: reservation.checkIn,
             checkOut: reservation.checkOut,
+            nights: reservation.nights,
             balance: reservation.total,
           }}
           extras={extras}

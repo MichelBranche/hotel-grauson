@@ -11,7 +11,7 @@ import {
   cancelReservationAction,
   updateReservationStatusAction,
 } from "@pms-core/actions/reservations";
-import { reportAction } from "@pms-core/components/ui/action-feedback";
+import { reportAction, settleAction } from "@pms-core/components/ui/action-feedback";
 import { Button } from "@pms-core/components/ui/button";
 import { ConfirmDialog, Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@pms-core/components/ui/input";
@@ -62,6 +62,7 @@ export function LifecycleActions({
     roomStatus: RoomStatus;
     checkIn: string;
     checkOut: string;
+    nights: number;
     balance: number;
   };
   extras: { id: string; name: string; price: number }[];
@@ -88,8 +89,48 @@ export function LifecycleActions({
   const blocked = checkInBlockMessage({ number: reservation.roomNumber, status: reservation.roomStatus });
   const actions = actionsFor(reservation.status).filter((action) => allowed(action, permissions, Boolean(onModify)));
 
-  async function finish(result: { ok: true; data: { message: string; housekeepingCreated: boolean; status: ReservationStatus; roomStatus: RoomStatus; total: number; checkOut: string; nights: number } } | { ok: false; error: string }) {
+  function fallbackPatch(status: ReservationStatus): StayPatch {
+    if (status === "CHECKED_IN") {
+      return { status, roomStatus: "OCCUPIED", total: reservation.total, checkOut: reservation.checkOut, nights: reservation.nights };
+    }
+    if (status === "CHECKED_OUT") {
+      return {
+        status,
+        roomStatus: "DIRTY",
+        total: reservation.total,
+        checkOut: departure.shortened ? departure.checkOut : reservation.checkOut,
+        nights: departure.shortened ? departure.nights : reservation.nights,
+      };
+    }
+    if (status === "CANCELLED" && reservation.status === "CHECKED_IN") {
+      return { status, roomStatus: "DIRTY", total: reservation.total, checkOut: reservation.checkOut, nights: reservation.nights };
+    }
+    return { status, roomStatus: reservation.roomStatus, total: reservation.total, checkOut: reservation.checkOut, nights: reservation.nights };
+  }
+
+  function glitchMessage(status: ReservationStatus) {
+    if (status === "CHECKED_IN") return "Check-in registrato.";
+    if (status === "CHECKED_OUT") return "Check-out registrato.";
+    if (status === "CANCELLED") return "Prenotazione cancellata.";
+    if (status === "NO_SHOW") return "No-show registrato.";
+    if (status === "CONFIRMED") return "Prenotazione confermata.";
+    if (status === "OPTION") return "Prenotazione messa in opzione.";
+    return "Stato aggiornato.";
+  }
+
+  async function finish(
+    result:
+      | { ok: true; data: { message: string; housekeepingCreated: boolean; status: ReservationStatus; roomStatus: RoomStatus; total: number; checkOut: string; nights: number } }
+      | { ok: false; error: string }
+      | { ok: true; committed: true },
+    status: ReservationStatus,
+  ) {
     setPending(false);
+    if ("committed" in result) {
+      toast.success(glitchMessage(status), { id: `reservation-${reservation.id}` });
+      onChanged(fallbackPatch(status));
+      return true;
+    }
     if (!result.ok) {
       toast.error(result.error, { id: `reservation-${reservation.id}` });
       return false;
@@ -113,7 +154,7 @@ export function LifecycleActions({
   async function runStatus(status: "CHECKED_IN" | "CHECKED_OUT" | "NO_SHOW" | "CONFIRMED" | "OPTION", key?: string) {
     setPending(true);
     setBusy(key ?? null);
-    await finish(await updateReservationStatusAction(reservation.id, status));
+    await finish(await settleAction(() => updateReservationStatusAction(reservation.id, status)), status);
     setBusy(null);
   }
 
@@ -201,7 +242,7 @@ export function LifecycleActions({
           onSubmit={async (event) => {
             event.preventDefault();
             setPending(true);
-            const ok = await finish(await cancelReservationAction({ id: reservation.id, reason, force }));
+            const ok = await finish(await settleAction(() => cancelReservationAction({ id: reservation.id, reason, force })), "CANCELLED");
             if (ok) setCancelOpen(false);
           }}
         >
@@ -226,8 +267,14 @@ export function LifecycleActions({
             event.preventDefault();
             const value = Number(amount.replace(",", "."));
             setPending(true);
-            const result = await addReservationPaymentAction({ id: reservation.id, amount: value, method });
+            const result = await settleAction(() => addReservationPaymentAction({ id: reservation.id, amount: value, method }));
             setPending(false);
+            if ("committed" in result) {
+              toast.success(`Pagamento di ${formatMoneyExact(value)} registrato.`, { id: `pay-${reservation.id}` });
+              setPayOpen(false);
+              onChanged();
+              return;
+            }
             if (reportAction(`pay-${reservation.id}`, result, `Pagamento di ${formatMoneyExact(value)} registrato.`)) {
               setPayOpen(false);
               onChanged();
@@ -264,8 +311,14 @@ export function LifecycleActions({
             event.preventDefault();
             const qty = Number(quantity);
             setPending(true);
-            const result = await addReservationExtraAction(reservation.id, extraId, qty);
+            const result = await settleAction(() => addReservationExtraAction(reservation.id, extraId, qty));
             setPending(false);
+            if ("committed" in result) {
+              toast.success("Extra aggiunto. Il totale è stato ricalcolato.", { id: `extra-${reservation.id}` });
+              setExtraOpen(false);
+              onChanged();
+              return;
+            }
             if (reportAction(`extra-${reservation.id}`, result, "Extra aggiunto. Il totale è stato ricalcolato.")) {
               setExtraOpen(false);
               onChanged();

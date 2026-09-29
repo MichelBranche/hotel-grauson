@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import type { ReservationStatus } from "@prisma/client";
@@ -20,7 +21,17 @@ const staySchema = z.object({
 });
 
 function refresh() {
-  revalidatePath("/pms", "layout");
+  // Revalidate after the action response is sent. Doing it inline makes Next
+  // re-render the current page in the same request; if that render throws
+  // (pool pressure, a missing relation), the client sees a failure even though
+  // the reservation write already committed.
+  try {
+    after(() => {
+      revalidatePath("/pms", "layout");
+    });
+  } catch (error) {
+    console.error("Revalidate skipped after a committed reservation change.", error);
+  }
 }
 
 function actor(session: SessionUser) {
