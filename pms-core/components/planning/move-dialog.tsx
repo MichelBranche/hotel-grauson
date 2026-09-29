@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { moveReservationAction, previewReservationChangeAction } from "@pms-core/actions/reservations";
+import { settleAction } from "@pms-core/components/ui/action-feedback";
 import { Button } from "@pms-core/components/ui/button";
 import { Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select } from "@pms-core/components/ui/input";
@@ -23,6 +25,7 @@ export function MoveDialog({
   rooms,
   plans,
   onSaved,
+  onCommitted,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +33,7 @@ export function MoveDialog({
   rooms: PlanningRoom[];
   plans: { id: string; code: string; name: string }[];
   onSaved: (next: SavedMove) => void;
+  onCommitted?: () => void;
 }) {
   return (
     <Dialog
@@ -46,6 +50,7 @@ export function MoveDialog({
           plans={plans}
           onClose={() => onOpenChange(false)}
           onSaved={onSaved}
+          onCommitted={onCommitted}
         />
       ) : null}
     </Dialog>
@@ -58,12 +63,14 @@ function MoveForm({
   plans,
   onClose,
   onSaved,
+  onCommitted,
 }: {
   reservation: PlanningReservation;
   rooms: PlanningRoom[];
   plans: { id: string; code: string; name: string }[];
   onClose: () => void;
   onSaved: (next: SavedMove) => void;
+  onCommitted?: () => void;
 }) {
   const [roomId, setRoomId] = useState(reservation.roomId);
   const [checkIn, setCheckIn] = useState(reservation.checkIn);
@@ -128,17 +135,25 @@ function MoveForm({
           event.preventDefault();
           if (!live?.quote) return;
           setPending(true);
-          const result = await moveReservationAction({
-            id: reservation.id,
-            roomId,
-            checkIn,
-            checkOut,
-            adults: Number(adults),
-            children: Number(children),
-            ratePlanId: ratePlanId || null,
-            guest: { firstName, lastName, email, phone },
-          });
+          const result = await settleAction(() =>
+            moveReservationAction({
+              id: reservation.id,
+              roomId,
+              checkIn,
+              checkOut,
+              adults: Number(adults),
+              children: Number(children),
+              ratePlanId: ratePlanId || null,
+              guest: { firstName, lastName, email, phone },
+            }),
+          );
           setPending(false);
+          if ("committed" in result) {
+            toast.success("Prenotazione aggiornata.", { id: `move-${reservation.id}` });
+            onCommitted?.();
+            onClose();
+            return;
+          }
           if (!result.ok) {
             setPreview({ key: previewKey, quote: null, error: result.error });
             return;

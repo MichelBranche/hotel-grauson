@@ -40,19 +40,24 @@ export default async function ReservationDetailPage({ params }: { params: Promis
   ]);
 
   const paid = roundMoney(reservation.payments.reduce((sum, payment) => sum + payment.amount, 0));
+  const roomNumber = reservation.room?.number ?? "—";
+  const roomTypeName = reservation.roomType?.name ?? reservation.room?.roomType?.name ?? "Camera";
+  const roomStatus = reservation.room?.status ?? "AVAILABLE";
+  const guestFirstName = reservation.guest?.firstName ?? "";
+  const guestLastName = reservation.guest?.lastName ?? "";
   const view: PlanningReservation = {
     id: reservation.id,
     code: reservation.code,
     roomId: reservation.roomId,
-    roomNumber: reservation.room.number,
-    roomTypeName: reservation.roomType.name,
+    roomNumber,
+    roomTypeName,
     guestId: reservation.guestId,
-    guestName: guestDisplay(reservation.guest.firstName, reservation.guest.lastName),
-    guestFirstName: reservation.guest.firstName,
-    guestLastName: reservation.guest.lastName,
+    guestName: guestDisplay(guestFirstName, guestLastName),
+    guestFirstName,
+    guestLastName,
     ratePlanId: reservation.ratePlanId,
-    email: reservation.guest.email,
-    phone: reservation.guest.phone,
+    email: reservation.guest?.email,
+    phone: reservation.guest?.phone,
     adults: reservation.adults,
     children: reservation.children,
     checkIn: toISODate(reservation.checkIn),
@@ -75,7 +80,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
     capacity: room.capacity,
     status: room.status,
     roomTypeId: room.roomTypeId,
-    roomTypeName: room.roomType.name,
+    roomTypeName: room.roomType?.name ?? "Camera",
     active: room.active,
   }));
 
@@ -86,7 +91,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
           reservation={view}
           stay={{
             status: reservation.status,
-            roomStatus: reservation.room.status,
+            roomStatus,
             roomRate: reservation.roomRate,
             extrasTotal: reservation.extrasTotal,
             taxesTotal: reservation.taxesTotal,

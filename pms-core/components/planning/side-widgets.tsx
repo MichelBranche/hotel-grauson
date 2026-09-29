@@ -48,7 +48,10 @@ export function OccupancyWidget({
       <section className="pms-card p-5">
         <p className="text-sm text-[var(--pms-muted)]">Prenotazioni recenti</p>
         <ul className="mt-3 space-y-3">
-          {recent.slice(0, 4).map((item) => (
+          {recent.slice(0, 4).map((item) => {
+            const meta = reservationStatusMeta[item.status];
+            if (!meta || !item.guest) return null;
+            return (
             <li key={item.id} className="flex items-center justify-between gap-3 text-sm">
               <span>
                 <span className="block font-medium">{guestDisplay(item.guest.firstName, item.guest.lastName)}</span>
@@ -56,10 +59,11 @@ export function OccupancyWidget({
               </span>
               <span className="flex items-center gap-2">
                 <span>{formatMoney(item.total, item.currency)}</span>
-                <StatusBadge label={reservationStatusMeta[item.status].label} tone={reservationStatusMeta[item.status].tone} />
+                <StatusBadge label={meta.label} tone={meta.tone} />
               </span>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
     </div>

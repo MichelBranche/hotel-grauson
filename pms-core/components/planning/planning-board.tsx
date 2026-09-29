@@ -14,7 +14,7 @@ import { moveReservationAction } from "@pms-core/actions/reservations";
 import { updateHousekeepingStatusAction } from "@pms-core/actions/housekeeping";
 import { updateRoomStatusAction } from "@pms-core/actions/rooms";
 import { releasedStatuses, reservationStatusMeta, roomStatusMeta } from "@pms-core/config/status";
-import { reportAction } from "@pms-core/components/ui/action-feedback";
+import { reportAction, settleAction } from "@pms-core/components/ui/action-feedback";
 import type { DeskPermissions, StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
 import { NewReservationWizard } from "@pms-core/components/planning/new-reservation-wizard";
 import { MoveDialog } from "@pms-core/components/planning/move-dialog";
@@ -210,8 +210,13 @@ export function PlanningBoard({
           : item,
       ),
     }));
-    const result = await moveReservationAction({ id, ...next });
+    const result = await settleAction(() => moveReservationAction({ id, ...next }));
     moving.current.delete(id);
+    if ("committed" in result) {
+      toast.success("Prenotazione spostata.", { id: `move-${id}` });
+      void refreshBoard();
+      return;
+    }
     if (!result.ok) {
       setData((current) => ({
         ...current,
@@ -534,6 +539,9 @@ export function PlanningBoard({
                 : item,
             ),
           }));
+          void refreshBoard();
+        }}
+        onCommitted={() => {
           void refreshBoard();
         }}
       />
