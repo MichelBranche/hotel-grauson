@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { publicAvailabilityAction, publicCreateReservationAction } from "@pms-core/actions/booking";
 import { formatMoney } from "@pms-core/lib/money";
@@ -24,6 +25,7 @@ export function BookingWizard({
   const [guest, setGuest] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const router = useRouter();
 
   const selected = useMemo(
     () => offers.find((offer) => offer.availableRooms.some((room) => room.id === roomId)),
@@ -119,11 +121,7 @@ export function BookingWizard({
                 setError(result.error);
                 return;
               }
-              if (!result.data.checkoutUrl) {
-                setError("Non riusciamo ad aprire il pagamento.");
-                return;
-              }
-              window.location.assign(result.data.checkoutUrl);
+              router.push(`/booking/pagamento?code=${encodeURIComponent(result.data.code)}`);
             }}
           >
             <input className="rounded-2xl border border-[rgb(37_39_33_/_0.08)] px-3 py-2" placeholder="Nome" value={guest.firstName} onChange={(event) => setGuest({ ...guest, firstName: event.target.value })} required />
@@ -132,7 +130,7 @@ export function BookingWizard({
             <input className="rounded-2xl border border-[rgb(37_39_33_/_0.08)] px-3 py-2" placeholder="Telefono" value={guest.phone} onChange={(event) => setGuest({ ...guest, phone: event.target.value })} />
             <p className="text-sm text-muted">{rate ? `${rate.name} · ${formatMoney(rate.total)}` : "Seleziona camera e tariffa"}</p>
             <button type="submit" disabled={pending || !roomId} className="rounded-full bg-alpine px-5 py-2.5 text-sm text-surface">
-              Paga e conferma
+              Conferma
             </button>
           </form>
         </div>

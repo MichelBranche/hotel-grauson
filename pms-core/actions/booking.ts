@@ -9,7 +9,7 @@ import { rateLimit } from "@pms-core/auth/rate-limit";
 import { wrapAction } from "@pms-core/actions/result";
 import { createReservation, defaultPropertyId, getAvailabilityDetailed } from "@pms-core/integrations/booking-engine";
 import { DomainError } from "@pms-core/lib/errors";
-import { startCheckout } from "@pms-core/services/checkout.service";
+import { confirmPayAtProperty, publicBookingByCode, startCheckout } from "@pms-core/services/checkout.service";
 
 const searchSchema = z.object({
   checkIn: z.string().min(10),
@@ -75,16 +75,6 @@ export async function publicCreateReservationAction(input: {
     if (!reservation?.id || !reservation.code) {
       throw new DomainError("La prenotazione non è stata registrata. Riprovate o chiamate la locanda.");
     }
-    const checkout = await startCheckout({
-      reservationId: reservation.id,
-      propertyId,
-      code: reservation.code,
-      total: reservation.total,
-      ratePlanId: reservation.ratePlanId,
-      email: reservation.email,
-      checkIn: reservation.checkIn,
-      checkOut: reservation.checkOut,
-    });
     try {
       after(() => {
         revalidatePath("/pms", "layout");
@@ -92,12 +82,49 @@ export async function publicCreateReservationAction(input: {
     } catch (error) {
       console.error("Revalidate skipped after a public booking.", error);
     }
-    return {
-      id: reservation.id,
-      code: reservation.code,
-      status: reservation.status,
-      checkoutUrl: checkout.checkoutUrl,
-      depositAmount: checkout.depositAmount,
-    };
+    return { id: reservation.id, code: reservation.code, status: reservation.status };
+  });
+}
+
+export async function publicPayAtPropertyAction(code: string) {
+  return wrapAction(async () => {
+    const confirmed = await confirmPayAtProperty(code);
+    try {
+      after(() => {
+        revalidatePath("/pms", "layout");
+      });
+    } catch (error) {
+      console.error("Revalidate skipped after pay-at-property.", error);
+    }
+    return confirmed;
+  });
+}
+
+export async function publicStartCardCheckoutAction(code: string) {
+  return wrapAction(async () => {
+    const ip = (await headers()).get("x-forwarded-for") ?? "local";
+    const limited = rateLimit(`booking-card:${ip}`, 12, 60 * 60 * 1000);
+    if (!limited.ok) throw new DomainError("Troppe richieste da questo indirizzo. Riprovate più tardi.");
+    const booking = await publicBookingByCode(code);
+    if (!booking) throw new DomainError("Non troviamo questa prenotazione.");
+    if (booking.status !== "OPTION") {
+      throw new DomainError("Questa prenotazione non è in attesa di pagamento.");
+    }
+    try {
+      const checkout = await startCheckout({
+        reservationId: booking.id,
+        propertyId: booking.propertyId,
+        code: booking.code,
+        total: booking.total,
+        ratePlanId: booking.ratePlanId,
+        email: booking.email,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+      });
+      return { checkoutUrl: checkout.checkoutUrl };
+    } catch (error) {
+      console.error("Public card checkout did not open.", error);
+      throw new DomainError("Pagamento online non ancora disponibile");
+    }
   });
 }
