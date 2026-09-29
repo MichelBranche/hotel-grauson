@@ -1,3 +1,6 @@
+"use client";
+
+import { Check } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -6,7 +9,12 @@ import { catalogForType, rateLabel } from "@/lib/booking-catalog";
 import { formatMoney } from "@pms-core/lib/money";
 import type { AvailabilityOffer } from "@pms-core/types";
 
-export function BookingOffers({
+/**
+ * Client component: la scelta della tariffa è un click, quindi vive nel browser.
+ * Non cerca le camere da solo. BookingFlow chiama publicAvailabilityAction
+ * e passa qui l'elenco già pronto (AvailabilityOffer), con il prezzo del soggiorno.
+ */
+export function AvailableRooms({
   offers,
   nights,
   roomTypeId,
@@ -27,8 +35,10 @@ export function BookingOffers({
         return (
           <li key={offer.roomTypeId}>
             <article
-              className={`overflow-hidden rounded-[var(--radius-panel)] border bg-surface shadow-[var(--shadow-soft)] transition-[border-color] duration-500 ${
-                selected ? "border-alpine/25" : "border-[rgb(37_39_33_/_0.06)]"
+              className={`overflow-hidden rounded-[var(--radius-card)] border bg-paper transition-[border-color,box-shadow] duration-500 ${
+                selected
+                  ? "border-alpine shadow-[var(--shadow-soft)] ring-1 ring-alpine/30"
+                  : "border-[rgb(37_39_33_/_0.08)]"
               }`}
             >
               <div className="grid lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
@@ -59,34 +69,43 @@ export function BookingOffers({
                     <p className="mt-2 text-[0.875rem] text-muted">{catalog.promise}</p>
                     <Link
                       href={catalog.href}
-                      className="mt-3 inline-block text-[0.75rem] text-ink underline decoration-[rgb(37_39_33_/_0.22)] underline-offset-4 hover:decoration-ink"
+                      className="mt-3 inline-flex min-h-11 items-center text-[0.75rem] text-ink underline decoration-[rgb(37_39_33_/_0.22)] underline-offset-4 hover:decoration-ink"
                     >
                       La camera
                     </Link>
                   </div>
 
-                  <div className="grid gap-2">
+                  <div className="grid gap-2" role="group" aria-label={`Tariffe per ${catalog.label}`}>
                     {offer.ratePlans.map((plan) => {
                       const active = selected && ratePlanId === plan.id;
+                      const detail = [
+                        /rimborsabile/i.test(plan.name) ? null : plan.refundable ? "Flessibile" : "Non rimborsabile",
+                        nights > 1 ? `${formatMoney(plan.nightly)} a notte` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+
                       return (
                         <button
                           key={plan.id}
                           type="button"
+                          aria-pressed={active}
                           onClick={() => onSelect(offer.roomTypeId, plan.id)}
-                          className={`flex items-baseline justify-between gap-4 rounded-[18px] px-4 py-3 text-left transition-colors duration-400 ${
+                          className={`flex min-h-12 items-center justify-between gap-4 rounded-[18px] px-4 py-3 text-left transition-colors duration-400 ${
                             active ? "bg-alpine text-surface" : "bg-surface-deep/70 text-ink hover:bg-surface-deep"
                           }`}
                         >
                           <span>
-                            <span className="block text-[0.875rem] font-medium">{rateLabel(plan.name)}</span>
-                            <span className={`mt-0.5 block text-[0.6875rem] ${active ? "text-surface/70" : "text-muted"}`}>
-                              {[
-                                /rimborsabile/i.test(plan.name) ? null : plan.refundable ? "Flessibile" : "Non rimborsabile",
-                                nights > 1 ? `${formatMoney(plan.nightly)} a notte` : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
+                            <span className="flex items-center gap-2 text-[0.875rem] font-medium">
+                              {active ? <Check className="size-4 shrink-0" strokeWidth={1.8} aria-hidden /> : null}
+                              {rateLabel(plan.name)}
+                              <span className="sr-only">{active ? ", tariffa scelta" : ""}</span>
                             </span>
+                            {detail ? (
+                              <span className={`mt-0.5 block text-[0.6875rem] ${active ? "text-surface/70" : "text-muted"}`}>
+                                {detail}
+                              </span>
+                            ) : null}
                           </span>
                           <span className="shrink-0 text-[0.9375rem] font-medium">{formatMoney(plan.total)}</span>
                         </button>
