@@ -149,12 +149,11 @@ export function SeasonPanel({
         }
         confirmLabel="Elimina"
         danger
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingDelete) return;
-          void deleteSeasonAction(pendingDelete.id).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success("Stagione eliminata.");
-          });
+          const result = await deleteSeasonAction(pendingDelete.id);
+          if (!result.ok) toast.error(result.error, { id: pendingDelete.id });
+          else toast.success("Stagione eliminata.", { id: pendingDelete.id });
         }}
       />
     </section>

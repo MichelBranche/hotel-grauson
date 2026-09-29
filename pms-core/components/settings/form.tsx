@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+
+import { reportAction } from "@pms-core/components/ui/action-feedback";
 
 import { updatePropertySettingsAction } from "@pms-core/actions/settings";
 import { Button } from "@pms-core/components/ui/button";
@@ -21,6 +22,7 @@ export function SettingsForm({
     language: string;
   };
 }) {
+  const [pending, setPending] = useState(false);
   const [form, setForm] = useState({
     name: property.name,
     address: property.address ?? "",
@@ -37,9 +39,10 @@ export function SettingsForm({
       className="grid gap-3"
       onSubmit={async (event) => {
         event.preventDefault();
+        setPending(true);
         const result = await updatePropertySettingsAction(form);
-        if (!result.ok) toast.error(result.error);
-        else toast.success("Impostazioni aggiornate.");
+        setPending(false);
+        reportAction("settings", result, "Impostazioni aggiornate.");
       }}
     >
       {Object.entries(form).map(([key, value]) => (
@@ -47,7 +50,7 @@ export function SettingsForm({
           <Input value={value} onChange={(event) => setForm({ ...form, [key]: event.target.value })} />
         </Field>
       ))}
-      <Button type="submit">Salva</Button>
+      <Button type="submit" pending={pending}>Salva</Button>
     </form>
   );
 }

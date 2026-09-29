@@ -55,6 +55,8 @@ export default async function PlanningPage() {
           canExtra: can(session.role, "reservations.write"),
           canForceCancel: session.role === "OWNER" || session.role === "ADMIN",
         }}
+        canSetRoomStatus={can(session.role, "rooms.write") || can(session.role, "housekeeping.write")}
+        roomStatusVia={can(session.role, "rooms.write") ? "rooms" : "housekeeping"}
       />
       <OccupancyWidget occupancy={kpis.occupancy} free={kpis.free} cleaning={kpis.cleaning} recent={recent} />
     </div>

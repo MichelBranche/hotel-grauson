@@ -92,12 +92,11 @@ export function PlanPanel({ plans, roomTypes, canWrite }: { plans: PlanView[]; r
         }
         confirmLabel="Elimina"
         danger
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingDelete) return;
-          void deleteRatePlanAction(pendingDelete.id).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success("Piano tariffario eliminato.");
-          });
+          const result = await deleteRatePlanAction(pendingDelete.id);
+          if (!result.ok) toast.error(result.error, { id: pendingDelete.id });
+          else toast.success("Piano tariffario eliminato.", { id: pendingDelete.id });
         }}
       />
     </section>

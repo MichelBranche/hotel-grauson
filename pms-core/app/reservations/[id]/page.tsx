@@ -3,10 +3,8 @@ import { notFound } from "next/navigation";
 
 import { requirePermission } from "@pms-core/auth/guards";
 import { ReservationDesk } from "@pms-core/components/reservations/reservation-desk";
-import { StatusBadge } from "@pms-core/components/ui/badge";
 import { can } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
-import { reservationStatusMeta } from "@pms-core/config/status";
 import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
 import { todayInTimeZone, toISODate } from "@pms-core/lib/dates";
@@ -83,13 +81,6 @@ export default async function ReservationDetailPage({ params }: { params: Promis
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs text-[var(--pms-muted)]">{reservation.code}</p>
-          <h1 className="text-3xl">{view.guestName}</h1>
-        </div>
-        <StatusBadge label={reservationStatusMeta[reservation.status].label} tone={reservationStatusMeta[reservation.status].tone} />
-      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ReservationDesk
           reservation={view}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { reportAction, useActionPending } from "@pms-core/components/ui/action-feedback";
 
 import { deleteFloorAction, setFloorActiveAction } from "@pms-core/actions/rooms";
 import { FloorForm } from "@pms-core/components/rooms/floor-form";
@@ -14,6 +14,7 @@ import { StatusBadge } from "@pms-core/components/ui/badge";
 export function FloorList({ floors, canWrite }: { floors: StructureFloor[]; canWrite: boolean }) {
   const [editing, setEditing] = useState<StructureFloor | null | "new">(null);
   const [pendingDelete, setPendingDelete] = useState<StructureFloor | null>(null);
+  const { pending, run } = useActionPending();
 
   return (
     <div className="space-y-4">
@@ -50,11 +51,13 @@ export function FloorList({ floors, canWrite }: { floors: StructureFloor[]; canW
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={async () => {
-                      const result = await setFloorActiveAction(floor.id, !floor.active);
-                      if (!result.ok) toast.error(result.error);
-                      else toast.success(floor.active ? "Piano disattivato." : "Piano attivato.");
-                    }}
+                    pending={pending === floor.id}
+                    onClick={() =>
+                      void run(floor.id, async () => {
+                        const result = await setFloorActiveAction(floor.id, !floor.active);
+                        reportAction(floor.id, result, floor.active ? "Piano disattivato." : "Piano attivato.");
+                      })
+                    }
                   >
                     {floor.active ? "Disattiva" : "Attiva"}
                   </Button>
@@ -93,12 +96,10 @@ export function FloorList({ floors, canWrite }: { floors: StructureFloor[]; canW
         }
         confirmLabel="Elimina"
         danger
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingDelete) return;
-          void deleteFloorAction(pendingDelete.id).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success("Piano eliminato.");
-          });
+          const result = await deleteFloorAction(pendingDelete.id);
+          reportAction(pendingDelete.id, result, "Piano eliminato.");
         }}
       />
     </div>

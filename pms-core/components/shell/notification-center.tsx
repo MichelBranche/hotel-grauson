@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { markNotificationsReadAction } from "@pms-core/actions/lookups";
 
 type Item = { id: string; title: string; body: string; read: boolean; createdAt: Date | string };
@@ -15,6 +17,7 @@ export function NotificationCenter({
   onClose: () => void;
   onRead: () => void;
 }) {
+  const [pending, setPending] = useState(false);
   if (!open) return null;
 
   return (
@@ -27,13 +30,16 @@ export function NotificationCenter({
           <h2 className="text-sm font-medium">Notifiche</h2>
           <button
             type="button"
-            className="text-xs text-[var(--pms-muted)] underline"
+            className="text-xs text-[var(--pms-muted)] underline disabled:opacity-50"
+            disabled={pending}
             onClick={async () => {
+              setPending(true);
               await markNotificationsReadAction();
+              setPending(false);
               onRead();
             }}
           >
-            Segna tutte lette
+            {pending ? "Salvataggio…" : "Segna tutte lette"}
           </button>
         </div>
         <ul className="max-h-80 space-y-2 overflow-auto">

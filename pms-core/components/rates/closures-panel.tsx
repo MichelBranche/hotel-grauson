@@ -143,12 +143,11 @@ export function ClosuresPanel({
           pendingReopen ? `${pendingReopen.roomTypeName} torna vendibile dal ${formatShort(pendingReopen.startDate)} al ${formatShort(pendingReopen.endDate)}.` : ""
         }
         confirmLabel="Riapri"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingReopen) return;
-          void reopenRoomTypeAction(pendingReopen.roomTypeId, pendingReopen.startDate, pendingReopen.endDate).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success(`${pendingReopen.roomTypeName} riaperta.`);
-          });
+          const result = await reopenRoomTypeAction(pendingReopen.roomTypeId, pendingReopen.startDate, pendingReopen.endDate);
+          if (!result.ok) toast.error(result.error, { id: `reopen-${pendingReopen.roomTypeId}` });
+          else toast.success(`${pendingReopen.roomTypeName} riaperta.`, { id: `reopen-${pendingReopen.roomTypeId}` });
         }}
       />
       <ConfirmDialog
@@ -157,12 +156,11 @@ export function ClosuresPanel({
         title="Riaprire la camera?"
         description={pendingDelete ? `La camera ${pendingDelete.roomNumber} torna vendibile dal ${formatShort(pendingDelete.startDate)} al ${formatShort(pendingDelete.endDate)}.` : ""}
         confirmLabel="Riapri"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingDelete) return;
-          void deleteRoomBlockAction(pendingDelete.id).then((result) => {
-            if (!result.ok) toast.error(result.error);
-            else toast.success(`Camera ${pendingDelete.roomNumber} riaperta.`);
-          });
+          const result = await deleteRoomBlockAction(pendingDelete.id);
+          if (!result.ok) toast.error(result.error, { id: pendingDelete.id });
+          else toast.success(`Camera ${pendingDelete.roomNumber} riaperta.`, { id: pendingDelete.id });
         }}
       />
     </section>

@@ -4,14 +4,18 @@ import { DndContext, DragOverlay, PointerSensor, useDraggable, useSensor, useSen
 import { CSS } from "@dnd-kit/utilities";
 import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
+import type { RoomStatus } from "@prisma/client";
 import { BedDouble, CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { getPlanningAction } from "@pms-core/actions/lookups";
 import { moveReservationAction } from "@pms-core/actions/reservations";
+import { updateHousekeepingStatusAction } from "@pms-core/actions/housekeeping";
+import { updateRoomStatusAction } from "@pms-core/actions/rooms";
 import { releasedStatuses, reservationStatusMeta, roomStatusMeta } from "@pms-core/config/status";
-import type { DeskPermissions } from "@pms-core/components/reservations/lifecycle-actions";
+import { reportAction } from "@pms-core/components/ui/action-feedback";
+import type { DeskPermissions, StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
 import { NewReservationWizard } from "@pms-core/components/planning/new-reservation-wizard";
 import { MoveDialog } from "@pms-core/components/planning/move-dialog";
 import { ReservationDrawer } from "@pms-core/components/planning/reservation-drawer";
@@ -100,18 +104,24 @@ function Block({
   );
 }
 
+const ROOM_STATUS_CHOICES: RoomStatus[] = ["CLEANING", "AVAILABLE", "INSPECTED"];
+
 export function PlanningBoard({
   initial,
   extras,
   plans,
   permissions,
   businessToday,
+  canSetRoomStatus,
+  roomStatusVia,
 }: {
   initial: PlanningData;
   extras: { id: string; name: string; price: number }[];
   plans: { id: string; code: string; name: string }[];
   permissions: DeskPermissions;
   businessToday: string;
+  canSetRoomStatus: boolean;
+  roomStatusVia: "rooms" | "housekeeping";
 }) {
   const [data, setData] = useState(initial);
   const [view, setView] = useState<PlanningView>("twoweeks");
@@ -121,16 +131,21 @@ export function PlanningBoard({
   const [wizardOpen, setWizardOpen] = useState(false);
   const [active, setActive] = useState<PlanningReservation | null>(null);
   const [rangePicker, setRangePicker] = useState(anchor);
+  const [statusMenu, setStatusMenu] = useState<string | null>(null);
+  const [statusPending, setStatusPending] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const loadId = useRef(0);
+  const moving = useRef(new Set<string>());
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const from = anchor;
   const to = addDaysISO(anchor, spans[view]);
 
   useEffect(() => {
+    const token = ++loadId.current;
     let cancelled = false;
     void getPlanningAction(from, to).then((result) => {
-      if (!cancelled && result.ok) setData(result.data);
+      if (!cancelled && token === loadId.current && result.ok) setData(result.data);
     });
     return () => {
       cancelled = true;
@@ -142,9 +157,30 @@ export function PlanningBoard({
   const selected = data.reservations.find((item) => item.id === selectedId) ?? null;
 
   function refreshBoard() {
-    void getPlanningAction(from, to).then((result) => {
-      if (result.ok) setData(result.data);
+    const token = ++loadId.current;
+    return getPlanningAction(from, to).then((result) => {
+      if (token === loadId.current && result.ok) setData(result.data);
     });
+  }
+
+  function applyStayPatch(id: string, patch: StayPatch) {
+    setData((current) => ({
+      ...current,
+      rooms: current.rooms.map((room) => {
+        const stay = current.reservations.find((item) => item.id === id);
+        return stay && room.id === stay.roomId ? { ...room, status: patch.roomStatus } : room;
+      }),
+      reservations: current.reservations.map((item) =>
+        item.id === id
+          ? { ...item, status: patch.status, total: patch.total, checkOut: patch.checkOut, nights: patch.nights }
+          : item,
+      ),
+    }));
+  }
+
+  function onDeskChanged(patch?: StayPatch) {
+    if (patch && selectedId) applyStayPatch(selectedId, patch);
+    void refreshBoard();
   }
 
   const closedNights = useMemo(
@@ -158,7 +194,9 @@ export function PlanningBoard({
   );
 
   async function applyMove(id: string, next: { roomId: string; checkIn: string; checkOut: string }, previous: { roomId: string; checkIn: string; checkOut: string }) {
+    if (moving.current.has(id)) return;
     if (next.roomId === previous.roomId && next.checkIn === previous.checkIn && next.checkOut === previous.checkOut) return;
+    moving.current.add(id);
     setData((current) => ({
       ...current,
       reservations: current.reservations.map((item) =>
@@ -173,6 +211,7 @@ export function PlanningBoard({
       ),
     }));
     const result = await moveReservationAction({ id, ...next });
+    moving.current.delete(id);
     if (!result.ok) {
       setData((current) => ({
         ...current,
@@ -187,7 +226,7 @@ export function PlanningBoard({
             : item,
         ),
       }));
-      toast.error(result.error);
+      toast.error(result.error, { id: `move-${id}` });
       return;
     }
     setData((current) => ({
@@ -215,11 +254,18 @@ export function PlanningBoard({
           : item,
       ),
     }));
+    const unchanged =
+      result.data.roomId === previous.roomId &&
+      result.data.checkIn === previous.checkIn &&
+      result.data.checkOut === previous.checkOut &&
+      result.data.total === result.data.previousTotal;
+    if (unchanged) return;
     const priceNote =
       result.data.previousTotal === result.data.total
         ? ""
         : ` Totale ${formatMoneyExact(result.data.previousTotal)} → ${formatMoneyExact(result.data.total)}.`;
     toast.success(`Prenotazione spostata.${priceNote}`, {
+      id: `move-${id}`,
       action: {
         label: "Annulla",
         onClick: () => {
@@ -227,6 +273,32 @@ export function PlanningBoard({
         },
       },
     });
+  }
+
+  async function setRoomStatus(roomId: string, status: RoomStatus) {
+    const room = data.rooms.find((item) => item.id === roomId);
+    if (!room || room.status === status || statusPending) return;
+    const previous = room.status;
+    setStatusMenu(null);
+    setStatusPending(roomId);
+    setData((current) => ({
+      ...current,
+      rooms: current.rooms.map((item) => (item.id === roomId ? { ...item, status } : item)),
+    }));
+    const result =
+      roomStatusVia === "rooms"
+        ? await updateRoomStatusAction(roomId, status)
+        : await updateHousekeepingStatusAction(roomId, status);
+    setStatusPending(null);
+    if (!result.ok) {
+      setData((current) => ({
+        ...current,
+        rooms: current.rooms.map((item) => (item.id === roomId ? { ...item, status: previous } : item)),
+      }));
+      reportAction(`room-status-${roomId}`, result, "");
+      return;
+    }
+    reportAction(`room-status-${roomId}`, result, `Camera ${room.number}: ${roomStatusMeta[status].label}.`);
   }
 
   function onDragStart(event: DragStartEvent) {
@@ -270,7 +342,11 @@ export function PlanningBoard({
             <button type="button" className="pms-press grid size-9 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(addDaysISO(anchor, -spans[view]))} aria-label="Periodo precedente">
               <ChevronLeft className="size-4" />
             </button>
-            <button type="button" className="pms-press h-9 rounded-full px-3 text-sm hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(todayISO())}>
+            <button
+              type="button"
+              className="pms-press h-9 rounded-full bg-[var(--pms-alpine)] px-3 text-sm font-medium text-[var(--pms-surface)] hover:bg-[var(--pms-green-soft)]"
+              onClick={() => setAnchor(businessToday || todayISO())}
+            >
               Oggi
             </button>
             <button type="button" className="pms-press grid size-9 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(addDaysISO(anchor, spans[view]))} aria-label="Periodo successivo">
@@ -320,19 +396,25 @@ export function PlanningBoard({
 
               {data.rooms.map((room) => (
                 <div key={room.id} className="relative flex border-b border-[var(--pms-line)]" style={{ height: ROW }}>
-                  <div className="sticky left-0 z-10 flex w-[188px] shrink-0 items-center gap-3 bg-[var(--pms-surface)] px-3">
-                    <BedDouble className="size-4 text-[var(--pms-muted)]" />
-                    <span>
-                      <span className="block text-sm font-medium">{room.number}</span>
-                      <span className="block text-[11px] text-[var(--pms-muted)]">
+                  <div className={cn("sticky left-0 z-10 flex w-[188px] shrink-0 items-center gap-2 bg-[var(--pms-surface)] px-3", statusMenu === room.id && "z-30")}>
+                    <BedDouble className="size-4 shrink-0 text-[var(--pms-muted)]" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium">{room.number}</span>
+                      <span className="block truncate text-[11px] text-[var(--pms-muted)]">
                         {room.roomTypeName}
                         {room.floorName ? ` · ${room.floorName}` : ""}
                         {room.active === false ? " · storico" : ""}
                       </span>
                     </span>
-                    {room.status !== "AVAILABLE" && room.status !== "OCCUPIED" ? (
-                      <StatusBadge label={roomStatusMeta[room.status].label} tone={roomStatusMeta[room.status].tone} />
-                    ) : null}
+                    <RoomStatusControl
+                      roomNumber={room.number}
+                      status={room.status}
+                      open={statusMenu === room.id}
+                      pending={statusPending === room.id}
+                      canChange={canSetRoomStatus}
+                      onToggle={() => setStatusMenu((current) => (current === room.id ? null : room.id))}
+                      onPick={(status) => void setRoomStatus(room.id, status)}
+                    />
                   </div>
                   <div className="relative flex-1">
                     {days.map((day) => {
@@ -411,7 +493,7 @@ export function PlanningBoard({
           businessToday={businessToday}
           onClose={() => setSelectedId(null)}
           onMove={() => setMoveOpen(true)}
-          onChanged={refreshBoard}
+          onChanged={onDeskChanged}
         />
       </div>
 
@@ -426,11 +508,94 @@ export function PlanningBoard({
             next.previousTotal === next.total
               ? ""
               : ` Totale ${formatMoneyExact(next.previousTotal)} → ${formatMoneyExact(next.total)}.`;
-          toast.success(`Prenotazione aggiornata.${priceNote}`);
-          refreshBoard();
+          toast.success(`Prenotazione aggiornata.${priceNote}`, { id: `move-${next.id}` });
+          setData((current) => ({
+            ...current,
+            reservations: current.reservations.map((item) =>
+              item.id === next.id
+                ? {
+                    ...item,
+                    roomId: next.roomId,
+                    roomNumber: next.roomNumber,
+                    roomTypeName: next.roomTypeName,
+                    checkIn: next.checkIn,
+                    checkOut: next.checkOut,
+                    nights: next.nights,
+                    total: next.total,
+                    adults: next.adults,
+                    children: next.children,
+                    ratePlanId: next.ratePlanId,
+                    guestName: next.guestName,
+                    guestFirstName: next.guestFirstName,
+                    guestLastName: next.guestLastName,
+                    email: next.email,
+                    phone: next.phone,
+                  }
+                : item,
+            ),
+          }));
+          void refreshBoard();
         }}
       />
-      <NewReservationWizard open={wizardOpen} onOpenChange={setWizardOpen} extras={extras} onCreated={() => window.location.reload()} />
+      <NewReservationWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        extras={extras}
+        onCreated={() => refreshBoard()}
+      />
+    </div>
+  );
+}
+
+function RoomStatusControl({
+  roomNumber,
+  status,
+  open,
+  pending,
+  canChange,
+  onToggle,
+  onPick,
+}: {
+  roomNumber: string;
+  status: RoomStatus;
+  open: boolean;
+  pending: boolean;
+  canChange: boolean;
+  onToggle: () => void;
+  onPick: (status: RoomStatus) => void;
+}) {
+  if (status === "AVAILABLE" || status === "OCCUPIED") return null;
+  const meta = roomStatusMeta[status];
+  const choices = ROOM_STATUS_CHOICES.filter((choice) => choice !== status);
+  if (!canChange) return <StatusBadge label={meta.label} tone={meta.tone} />;
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        className="pms-press disabled:opacity-60"
+        onPointerDown={(event) => event.stopPropagation()}
+        aria-label={`Stato camera ${roomNumber}: ${meta.label}`}
+        aria-expanded={open}
+        disabled={pending}
+        onClick={onToggle}
+      >
+        <StatusBadge label={pending ? "Salvataggio…" : meta.label} tone={meta.tone} />
+      </button>
+      {open ? (
+        <div className="absolute top-7 left-0 z-40 grid min-w-36 gap-1 rounded-2xl border border-[var(--pms-line)] bg-[var(--pms-surface)] p-1 shadow-[var(--pms-shadow)]">
+          {choices.map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              className="rounded-full px-3 py-1.5 text-left text-xs text-[var(--pms-text)] hover:bg-[var(--pms-surface-dark)]"
+              onClick={() => onPick(choice)}
+            >
+              {roomStatusMeta[choice].label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   cancelReservationAction,
   updateReservationStatusAction,
 } from "@pms-core/actions/reservations";
+import { reportAction } from "@pms-core/components/ui/action-feedback";
 import { Button } from "@pms-core/components/ui/button";
 import { ConfirmDialog, Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@pms-core/components/ui/input";
@@ -25,6 +26,14 @@ const PAYMENT_METHODS = [
   ["ONLINE", "Online"],
   ["OTHER", "Altro"],
 ] as const;
+
+export type StayPatch = {
+  status: ReservationStatus;
+  roomStatus: RoomStatus;
+  total: number;
+  checkOut: string;
+  nights: number;
+};
 
 export type DeskPermissions = {
   canWrite: boolean;
@@ -59,10 +68,11 @@ export function LifecycleActions({
   permissions: DeskPermissions;
   businessToday: string;
   onModify?: () => void;
-  onChanged: () => void;
+  onChanged: (patch?: StayPatch) => void;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"check-in" | "check-out" | "no-show" | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [force, setForce] = useState(false);
@@ -78,21 +88,33 @@ export function LifecycleActions({
   const blocked = checkInBlockMessage({ number: reservation.roomNumber, status: reservation.roomStatus });
   const actions = actionsFor(reservation.status).filter((action) => allowed(action, permissions, Boolean(onModify)));
 
-  async function finish(result: { ok: true; data: { message: string; housekeepingCreated: boolean } } | { ok: false; error: string }) {
+  async function finish(result: { ok: true; data: { message: string; housekeepingCreated: boolean; status: ReservationStatus; roomStatus: RoomStatus; total: number; checkOut: string; nights: number } } | { ok: false; error: string }) {
     setPending(false);
     if (!result.ok) {
-      toast.error(result.error);
-      return;
+      toast.error(result.error, { id: `reservation-${reservation.id}` });
+      return false;
     }
-    toast.success(result.data.message, result.data.housekeepingCreated
-      ? { action: { label: "Housekeeping", onClick: () => router.push("/pms/housekeeping") } }
-      : undefined);
-    onChanged();
+    toast.success(result.data.message, {
+      id: `reservation-${reservation.id}`,
+      action: result.data.housekeepingCreated
+        ? { label: "Housekeeping", onClick: () => router.push("/pms/housekeeping") }
+        : undefined,
+    });
+    onChanged({
+      status: result.data.status,
+      roomStatus: result.data.roomStatus,
+      total: result.data.total,
+      checkOut: result.data.checkOut,
+      nights: result.data.nights,
+    });
+    return true;
   }
 
-  async function runStatus(status: "CHECKED_IN" | "CHECKED_OUT" | "NO_SHOW" | "CONFIRMED" | "OPTION") {
+  async function runStatus(status: "CHECKED_IN" | "CHECKED_OUT" | "NO_SHOW" | "CONFIRMED" | "OPTION", key?: string) {
     setPending(true);
+    setBusy(key ?? null);
     await finish(await updateReservationStatusAction(reservation.id, status));
+    setBusy(null);
   }
 
   return (
@@ -105,11 +127,12 @@ export function LifecycleActions({
         <Button
           key={action}
           variant={action === "cancel" || action === "no-show" ? "ghost" : action === "check-in" || action === "check-out" || action === "confirm" ? "default" : "outline"}
+          pending={busy === action}
           disabled={pending || (action === "check-in" && Boolean(blocked)) || (action === "extra" && extras.length === 0)}
           onClick={() => {
             if (action === "modify") onModify?.();
-            else if (action === "confirm") void runStatus("CONFIRMED");
-            else if (action === "option") void runStatus("OPTION");
+            else if (action === "confirm") void runStatus("CONFIRMED", action);
+            else if (action === "option") void runStatus("OPTION", action);
             else if (action === "check-in") setConfirm("check-in");
             else if (action === "check-out") setConfirm("check-out");
             else if (action === "no-show") setConfirm("no-show");
@@ -157,9 +180,9 @@ export function LifecycleActions({
         confirmLabel={confirm === "no-show" ? "Segna no-show" : "Conferma"}
         danger={confirm === "no-show"}
         onConfirm={() => {
-          if (confirm === "check-in") void runStatus("CHECKED_IN");
-          if (confirm === "check-out") void runStatus("CHECKED_OUT");
-          if (confirm === "no-show") void runStatus("NO_SHOW");
+          if (confirm === "check-in") return runStatus("CHECKED_IN");
+          if (confirm === "check-out") return runStatus("CHECKED_OUT");
+          if (confirm === "no-show") return runStatus("NO_SHOW");
         }}
       />
 
@@ -178,8 +201,8 @@ export function LifecycleActions({
           onSubmit={async (event) => {
             event.preventDefault();
             setPending(true);
-            setCancelOpen(false);
-            await finish(await cancelReservationAction({ id: reservation.id, reason, force }));
+            const ok = await finish(await cancelReservationAction({ id: reservation.id, reason, force }));
+            if (ok) setCancelOpen(false);
           }}
         >
           <Field label="Motivo">
@@ -189,7 +212,7 @@ export function LifecycleActions({
             <Button type="button" variant="ghost" onClick={() => setCancelOpen(false)}>
               Indietro
             </Button>
-            <Button type="submit" variant="danger" disabled={pending || reason.trim().length < 3}>
+            <Button type="submit" variant="danger" pending={pending} disabled={reason.trim().length < 3}>
               {force ? "Annulla il soggiorno" : "Cancella prenotazione"}
             </Button>
           </div>
@@ -203,12 +226,10 @@ export function LifecycleActions({
             event.preventDefault();
             const value = Number(amount.replace(",", "."));
             setPending(true);
-            setPayOpen(false);
             const result = await addReservationPaymentAction({ id: reservation.id, amount: value, method });
             setPending(false);
-            if (!result.ok) toast.error(result.error);
-            else {
-              toast.success(`Pagamento di ${formatMoneyExact(value)} registrato.`);
+            if (reportAction(`pay-${reservation.id}`, result, `Pagamento di ${formatMoneyExact(value)} registrato.`)) {
+              setPayOpen(false);
               onChanged();
             }
           }}
@@ -229,7 +250,7 @@ export function LifecycleActions({
             <Button type="button" variant="ghost" onClick={() => setPayOpen(false)}>
               Annulla
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" pending={pending}>
               Conferma pagamento
             </Button>
           </div>
@@ -243,12 +264,10 @@ export function LifecycleActions({
             event.preventDefault();
             const qty = Number(quantity);
             setPending(true);
-            setExtraOpen(false);
             const result = await addReservationExtraAction(reservation.id, extraId, qty);
             setPending(false);
-            if (!result.ok) toast.error(result.error);
-            else {
-              toast.success("Extra aggiunto. Il totale è stato ricalcolato.");
+            if (reportAction(`extra-${reservation.id}`, result, "Extra aggiunto. Il totale è stato ricalcolato.")) {
+              setExtraOpen(false);
               onChanged();
             }
           }}
@@ -269,7 +288,7 @@ export function LifecycleActions({
             <Button type="button" variant="ghost" onClick={() => setExtraOpen(false)}>
               Annulla
             </Button>
-            <Button type="submit" disabled={pending || !extraId}>
+            <Button type="submit" pending={pending} disabled={!extraId}>
               Conferma extra
             </Button>
           </div>

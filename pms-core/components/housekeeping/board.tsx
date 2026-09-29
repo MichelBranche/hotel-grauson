@@ -1,7 +1,8 @@
 "use client";
 
-import { toast } from "sonner";
 import { useState } from "react";
+
+import { reportAction, useActionPending } from "@pms-core/components/ui/action-feedback";
 
 import { updateHousekeepingStatusAction } from "@pms-core/actions/housekeeping";
 import { roomStatusMeta } from "@pms-core/config/status";
@@ -26,6 +27,7 @@ type Row = {
 
 export function HousekeepingBoard({ rooms }: { rooms: Row[] }) {
   const [rows, setRows] = useState(rooms);
+  const { pending, run } = useActionPending();
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -48,20 +50,21 @@ export function HousekeepingBoard({ rooms }: { rooms: Row[] }) {
                 <button
                   key={action.status}
                   type="button"
-                  className="pms-press h-8 rounded-full border border-[var(--pms-line)] px-3 text-xs hover:bg-[var(--pms-surface-dark)]"
-                  onClick={async () => {
-                    const previous = room.status;
-                    setRows((current) => current.map((item) => (item.id === room.id ? { ...item, status: action.status } : item)));
-                    const result = await updateHousekeepingStatusAction(room.id, action.status);
-                    if (!result.ok) {
-                      setRows((current) => current.map((item) => (item.id === room.id ? { ...item, status: previous } : item)));
-                      toast.error(result.error);
-                    } else {
-                      toast.success(`Camera ${room.number} aggiornata.`);
-                    }
-                  }}
+                  disabled={pending === room.id}
+                  className="pms-press h-8 rounded-full border border-[var(--pms-line)] px-3 text-xs text-[var(--pms-text)] hover:bg-[var(--pms-surface-dark)] disabled:opacity-50"
+                  onClick={() =>
+                    void run(room.id, async () => {
+                      const previous = room.status;
+                      setRows((current) => current.map((item) => (item.id === room.id ? { ...item, status: action.status } : item)));
+                      const result = await updateHousekeepingStatusAction(room.id, action.status);
+                      if (!result.ok) {
+                        setRows((current) => current.map((item) => (item.id === room.id ? { ...item, status: previous } : item)));
+                      }
+                      reportAction(`hk-${room.id}`, result, `Camera ${room.number} aggiornata.`);
+                    })
+                  }
                 >
-                  {action.label}
+                  {pending === room.id ? "Salvataggio…" : action.label}
                 </button>
               ))}
             </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { toast } from "sonner";
+import { reportAction, useActionPending } from "@pms-core/components/ui/action-feedback";
 
 import {
   changeRoomFloorAction,
@@ -33,6 +33,7 @@ export function RoomDetailActions({
   const [typeId, setTypeId] = useState(room.roomTypeId);
   const [floorId, setFloorId] = useState(room.floorId ?? "");
   const [status, setStatus] = useState(room.status);
+  const { pending, run } = useActionPending();
 
   if (!canWrite) {
     return (
@@ -53,11 +54,13 @@ export function RoomDetailActions({
         <Button onClick={() => setEditOpen(true)}>Modifica camera</Button>
         <Button
           variant="outline"
-          onClick={async () => {
-            const result = await setRoomActiveAction(room.id, !room.active);
-            if (!result.ok) toast.error(result.error);
-            else toast.success(room.active ? "Camera disattivata." : "Camera attivata.");
-          }}
+          pending={pending === "active"}
+          onClick={() =>
+            void run("active", async () => {
+              const result = await setRoomActiveAction(room.id, !room.active);
+              reportAction(`room-active-${room.id}`, result, room.active ? "Camera disattivata." : "Camera attivata.");
+            })
+          }
         >
           {room.active ? "Disattiva" : "Attiva"}
         </Button>
@@ -81,11 +84,13 @@ export function RoomDetailActions({
             </Select>
             <Button
               variant="outline"
-              onClick={async () => {
-                const result = await changeRoomTypeAction(room.id, typeId);
-                if (!result.ok) toast.error(result.error);
-                else toast.success("Tipologia aggiornata. Le prenotazioni esistenti restano invariate.");
-              }}
+              pending={pending === "type"}
+              onClick={() =>
+                void run("type", async () => {
+                  const result = await changeRoomTypeAction(room.id, typeId);
+                  reportAction(`room-type-${room.id}`, result, "Tipologia aggiornata. Le prenotazioni esistenti restano invariate.");
+                })
+              }
             >
               Applica
             </Button>
@@ -103,11 +108,13 @@ export function RoomDetailActions({
             </Select>
             <Button
               variant="outline"
-              onClick={async () => {
-                const result = await changeRoomFloorAction(room.id, floorId || null);
-                if (!result.ok) toast.error(result.error);
-                else toast.success("Piano aggiornato.");
-              }}
+              pending={pending === "floor"}
+              onClick={() =>
+                void run("floor", async () => {
+                  const result = await changeRoomFloorAction(room.id, floorId || null);
+                  reportAction(`room-floor-${room.id}`, result, "Piano aggiornato.");
+                })
+              }
             >
               Applica
             </Button>
@@ -124,11 +131,13 @@ export function RoomDetailActions({
             </Select>
             <Button
               variant="outline"
-              onClick={async () => {
-                const result = await updateRoomStatusAction(room.id, status);
-                if (!result.ok) toast.error(result.error);
-                else toast.success("Stato aggiornato.");
-              }}
+              pending={pending === "status"}
+              onClick={() =>
+                void run("status", async () => {
+                  const result = await updateRoomStatusAction(room.id, status);
+                  reportAction(`room-status-${room.id}`, result, "Stato aggiornato.");
+                })
+              }
             >
               Applica
             </Button>

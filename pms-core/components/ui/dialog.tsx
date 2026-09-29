@@ -1,8 +1,8 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { cn } from "@pms-core/lib/utils";
 
@@ -80,27 +80,44 @@ export function ConfirmDialog({
   description: string;
   confirmLabel?: string;
   danger?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }) {
+  const [pending, setPending] = useState(false);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={title} description={description}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (pending) return;
+        onOpenChange(next);
+      }}
+      title={title}
+      description={description}
+    >
       <div className="flex justify-end gap-2">
         <button
           type="button"
-          className="h-10 rounded-full px-4 text-sm hover:bg-[var(--pms-surface-dark)]"
+          className="h-10 rounded-full px-4 text-sm text-[var(--pms-text)] hover:bg-[var(--pms-surface-dark)] disabled:opacity-50"
+          disabled={pending}
           onClick={() => onOpenChange(false)}
         >
           Annulla
         </button>
         <button
           type="button"
-          className={`h-10 rounded-full px-4 text-sm text-white ${danger ? "bg-[#8a3b3b]" : "bg-[var(--pms-alpine)]"}`}
+          className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-white disabled:opacity-50 ${danger ? "bg-[#8a3b3b]" : "bg-[var(--pms-alpine)]"}`}
+          disabled={pending}
+          aria-busy={pending || undefined}
           onClick={() => {
-            onConfirm();
-            onOpenChange(false);
+            setPending(true);
+            void Promise.resolve(onConfirm()).finally(() => {
+              setPending(false);
+              onOpenChange(false);
+            });
           }}
         >
-          {confirmLabel}
+          {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+          {pending ? "Salvataggio…" : confirmLabel}
         </button>
       </div>
     </Dialog>

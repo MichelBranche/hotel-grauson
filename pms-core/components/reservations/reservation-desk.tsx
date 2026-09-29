@@ -7,9 +7,12 @@ import { toast } from "sonner";
 
 import { updateReservationNotesAction } from "@pms-core/actions/reservations";
 import { MoveDialog } from "@pms-core/components/planning/move-dialog";
-import { LifecycleActions, type DeskPermissions } from "@pms-core/components/reservations/lifecycle-actions";
+import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
+import { reportAction } from "@pms-core/components/ui/action-feedback";
+import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
 import { Textarea } from "@pms-core/components/ui/input";
+import { reservationStatusMeta } from "@pms-core/config/status";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import type { PlanningReservation, PlanningRoom } from "@pms-core/types";
 
@@ -42,24 +45,90 @@ export function ReservationDesk({
   const router = useRouter();
   const [moveOpen, setMoveOpen] = useState(false);
   const [notes, setNotes] = useState(reservation.notes);
-  const [notesSource, setNotesSource] = useState(reservation.notes);
-  if (reservation.notes !== notesSource) {
-    setNotesSource(reservation.notes);
+  const [live, setLive] = useState({
+    status: stay.status,
+    roomStatus: stay.roomStatus,
+    total: reservation.total,
+    checkOut: reservation.checkOut,
+    nights: reservation.nights,
+    roomNumber: reservation.roomNumber,
+    roomTypeName: reservation.roomTypeName,
+    roomRate: stay.roomRate,
+    extrasTotal: stay.extrasTotal,
+    taxesTotal: stay.taxesTotal,
+    paid: stay.paid,
+    guestName: reservation.guestName,
+    balance,
+  });
+  const signature = [
+    stay.status,
+    stay.roomStatus,
+    reservation.total,
+    reservation.checkOut,
+    reservation.nights,
+    reservation.roomNumber,
+    reservation.roomTypeName,
+    stay.roomRate,
+    stay.extrasTotal,
+    stay.taxesTotal,
+    stay.paid,
+    reservation.guestName,
+    balance,
+    reservation.notes,
+  ].join("|");
+  const [seen, setSeen] = useState(signature);
+  if (signature !== seen) {
+    setSeen(signature);
     setNotes(reservation.notes);
+    setLive({
+      status: stay.status,
+      roomStatus: stay.roomStatus,
+      total: reservation.total,
+      checkOut: reservation.checkOut,
+      nights: reservation.nights,
+      roomNumber: reservation.roomNumber,
+      roomTypeName: reservation.roomTypeName,
+      roomRate: stay.roomRate,
+      extrasTotal: stay.extrasTotal,
+      taxesTotal: stay.taxesTotal,
+      paid: stay.paid,
+      guestName: reservation.guestName,
+      balance,
+    });
   }
   const [savingNotes, setSavingNotes] = useState(false);
 
-  function refresh() {
+  function refresh(patch?: StayPatch) {
+    if (patch) {
+      setLive((current) => ({
+        ...current,
+        status: patch.status,
+        roomStatus: patch.roomStatus,
+        total: patch.total,
+        checkOut: patch.checkOut,
+        nights: patch.nights,
+        balance: Math.max(0, patch.total - current.paid),
+      }));
+    }
     router.refresh();
   }
 
+  const meta = reservationStatusMeta[live.status];
+
   return (
     <section className="pms-card space-y-5 p-5 text-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs text-[var(--pms-muted)]">{reservation.code}</p>
+          <h1 className="text-3xl">{live.guestName}</h1>
+        </div>
+        <StatusBadge label={meta.label} tone={meta.tone} />
+      </div>
       <p>
-        {reservation.checkIn} → {reservation.checkOut} · {reservation.nights} notti
+        {reservation.checkIn} → {live.checkOut} · {live.nights} notti
       </p>
       <p>
-        Camera {reservation.roomNumber} · {reservation.roomTypeName}
+        Camera {live.roomNumber} · {live.roomTypeName}
       </p>
       <p>
         {reservation.adults} adulti{reservation.children ? ` · ${reservation.children} bambini` : ""}
@@ -67,23 +136,23 @@ export function ReservationDesk({
       <p>Email: {reservation.email ?? "—"}</p>
       <p>Telefono: {reservation.phone ?? "—"}</p>
       <div className="rounded-2xl bg-white/70 px-4 py-3">
-        <p>Camera {formatMoneyExact(stay.roomRate)}</p>
-        <p>Extra {formatMoneyExact(stay.extrasTotal)}</p>
-        <p>Tasse {formatMoneyExact(stay.taxesTotal)}</p>
-        <p className="mt-1 font-semibold">Totale {formatMoneyExact(reservation.total)}</p>
-        <p>Pagato {formatMoneyExact(stay.paid)} · saldo {formatMoneyExact(balance)}</p>
+        <p>Camera {formatMoneyExact(live.roomRate)}</p>
+        <p>Extra {formatMoneyExact(live.extrasTotal)}</p>
+        <p>Tasse {formatMoneyExact(live.taxesTotal)}</p>
+        <p className="mt-1 font-semibold">Totale {formatMoneyExact(live.total)}</p>
+        <p>Pagato {formatMoneyExact(live.paid)} · saldo {formatMoneyExact(live.balance)}</p>
       </div>
       <LifecycleActions
         reservation={{
           id: reservation.id,
           code: reservation.code,
-          status: stay.status,
-          total: reservation.total,
-          roomNumber: reservation.roomNumber,
-          roomStatus: stay.roomStatus,
+          status: live.status,
+          total: live.total,
+          roomNumber: live.roomNumber,
+          roomStatus: live.roomStatus,
           checkIn: reservation.checkIn,
-          checkOut: reservation.checkOut,
-          balance,
+          checkOut: live.checkOut,
+          balance: live.balance,
         }}
         extras={extras}
         permissions={permissions}
@@ -98,11 +167,7 @@ export function ReservationDesk({
           setSavingNotes(true);
           const result = await updateReservationNotesAction(reservation.id, notes);
           setSavingNotes(false);
-          if (!result.ok) toast.error(result.error);
-          else {
-            toast.success("Note aggiornate.");
-            refresh();
-          }
+          if (reportAction(`notes-${reservation.id}`, result, "Note aggiornate.")) refresh();
         }}
       >
         <label className="text-xs text-[var(--pms-muted)]" htmlFor="reservation-notes">
@@ -126,8 +191,21 @@ export function ReservationDesk({
             next.previousTotal === next.total
               ? ""
               : ` Totale ${formatMoneyExact(next.previousTotal)} → ${formatMoneyExact(next.total)}.`;
-          toast.success(`Prenotazione aggiornata.${priceNote}`);
-          refresh();
+          toast.success(`Prenotazione aggiornata.${priceNote}`, { id: `move-${next.id}` });
+          setLive((current) => ({
+            ...current,
+            total: next.total,
+            checkOut: next.checkOut,
+            nights: next.nights,
+            roomNumber: next.roomNumber,
+            roomTypeName: next.roomTypeName,
+            roomRate: next.roomRate,
+            extrasTotal: next.extrasTotal,
+            taxesTotal: next.taxesTotal,
+            guestName: next.guestName,
+            balance: Math.max(0, next.total - current.paid),
+          }));
+          router.refresh();
         }}
       />
     </section>

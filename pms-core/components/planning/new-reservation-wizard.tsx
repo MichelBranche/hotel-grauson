@@ -37,7 +37,7 @@ export function NewReservationWizard({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   extras: { id: string; name: string; price: number }[];
-  onCreated: () => void;
+  onCreated: () => void | Promise<void>;
 }) {
   const [step, setStep] = useState(0);
   const [checkIn, setCheckIn] = useState("");
@@ -55,7 +55,7 @@ export function NewReservationWizard({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<"search" | "save" | null>(null);
 
   const offer = offers.find((item) => item.roomTypeId === roomTypeId);
   const rate = offer?.ratePlans.find((item) => item.id === ratePlanId);
@@ -90,14 +90,16 @@ export function NewReservationWizard({
   async function next() {
     setError(null);
     if (step === 0) {
+      setPending("search");
       const ok = await loadAvailability();
+      setPending(null);
       if (!ok) return;
     }
     setStep((value) => Math.min(value + 1, steps.length - 1));
   }
 
   async function confirm() {
-    setPending(true);
+    setPending("save");
     const result = await createReservationAction({
       roomId,
       checkIn,
@@ -110,14 +112,15 @@ export function NewReservationWizard({
       notes,
       payment: paymentAmount > 0 ? { amount: paymentAmount, method: "CARD" } : undefined,
     });
-    setPending(false);
     if (!result.ok) {
+      setPending(null);
       setError(result.error);
       return;
     }
     setCode(result.data.code ?? result.data.id ?? "");
     setStep(8);
-    onCreated();
+    await onCreated();
+    setPending(null);
   }
 
   return (
@@ -300,12 +303,14 @@ export function NewReservationWizard({
           <Button
             type="button"
             onClick={() => void next()}
-            disabled={(step === 0 && (!checkIn || !checkOut)) || (step >= 1 && (!roomId || !ratePlanId))}
+            pending={pending === "search"}
+            pendingLabel="Ricerca…"
+            disabled={pending !== null || (step === 0 && (!checkIn || !checkOut)) || (step >= 1 && (!roomId || !ratePlanId))}
           >
             Continua
           </Button>
         ) : step === 7 ? (
-          <Button type="button" onClick={() => void confirm()} disabled={pending || !guest.firstName || !guest.lastName}>
+          <Button type="button" onClick={() => void confirm()} pending={pending === "save"} disabled={pending !== null || !guest.firstName || !guest.lastName}>
             Conferma
           </Button>
         ) : (
