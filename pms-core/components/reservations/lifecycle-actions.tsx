@@ -17,7 +17,7 @@ import { ConfirmDialog, Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@pms-core/components/ui/input";
 import { formatShort, todayISO } from "@pms-core/lib/dates";
 import { formatMoneyExact } from "@pms-core/lib/money";
-import { actionsFor, checkInBlockMessage, earlyCheckout, type DeskAction } from "@pms-core/lib/reservation-status";
+import { actionsFor, checkInBlockMessage, earlyCheckout, primaryDeskAction, type DeskAction } from "@pms-core/lib/reservation-status";
 
 const PAYMENT_METHODS = [
   ["CASH", "Contanti"],
@@ -53,6 +53,7 @@ export function LifecycleActions({
   onModify,
   onChanged,
   payAtProperty = false,
+  density = "full",
 }: {
   reservation: {
     id: string;
@@ -72,6 +73,8 @@ export function LifecycleActions({
   onChanged: (patch?: StayPatch) => void;
   /** Website option that asked to pay at the property. Uses the same confirm and cancel actions. */
   payAtProperty?: boolean;
+  /** Bar control: only Conferma, Check-in, or Check-out. */
+  density?: "full" | "primary";
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -91,6 +94,8 @@ export function LifecycleActions({
   const blocked = checkInBlockMessage({ number: reservation.roomNumber, status: reservation.roomStatus });
   const actions = actionsFor(reservation.status).filter((action) => allowed(action, permissions, Boolean(onModify)));
   const webRequest = payAtProperty && reservation.status === "OPTION";
+  const primary = primaryDeskAction(reservation.status);
+  const primaryAllowed = primary !== null && actions.includes(primary);
 
   async function finish(result: { ok: true; data: { message: string; housekeepingCreated: boolean; status: ReservationStatus; roomStatus: RoomStatus; total: number; checkOut: string; nights: number } } | { ok: false; error: string }) {
     setPending(false);
@@ -119,6 +124,29 @@ export function LifecycleActions({
     setBusy(key ?? null);
     await finish(await updateReservationStatusAction(reservation.id, status));
     setBusy(null);
+  }
+
+  if (density === "primary") {
+    if (!primaryAllowed || !primary) return null;
+    const blockedIn = primary === "check-in" && Boolean(blocked);
+    return (
+      <Button
+        size="sm"
+        className="h-7 px-2.5 text-[11px]"
+        pending={busy === primary}
+        pendingLabel="Attendi…"
+        disabled={pending || blockedIn}
+        title={blockedIn ? blocked ?? undefined : quickTitle(primary)}
+        aria-label={`${label(primary, false)} ${reservation.code}`}
+        onClick={() => {
+          if (primary === "confirm") void runStatus("CONFIRMED", primary);
+          else if (primary === "check-in") void runStatus("CHECKED_IN", primary);
+          else void runStatus("CHECKED_OUT", primary);
+        }}
+      >
+        {label(primary, false)}
+      </Button>
+    );
   }
 
   return (
@@ -325,6 +353,12 @@ function allowed(action: DeskAction, permissions: DeskPermissions, canOpenModify
   if (action === "payment") return permissions.canPay;
   if (action === "extra") return permissions.canExtra;
   return false;
+}
+
+function quickTitle(action: "confirm" | "check-in" | "check-out") {
+  if (action === "confirm") return "Conferma il soggiorno";
+  if (action === "check-in") return "Registra il check-in";
+  return "Registra il check-out";
 }
 
 function label(action: DeskAction, noExtras: boolean, webRequest = false) {

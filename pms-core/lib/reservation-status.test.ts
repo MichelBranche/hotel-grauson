@@ -9,6 +9,7 @@ import {
   assertStatusTransition,
   checkInBlockMessage,
   earlyCheckout,
+  primaryDeskAction,
 } from "@pms-core/lib/reservation-status";
 
 function refused(from: Parameters<typeof assertStatusTransition>[0], to: Parameters<typeof assertStatusTransition>[1], options?: { forceCancel?: boolean; reason?: string }) {
@@ -66,6 +67,15 @@ describe("status transitions", () => {
     assert.equal(occupyingStatuses.includes("CONFIRMED"), true);
     assert.equal(occupyingStatuses.includes("OPTION"), true);
     assert.equal(planningStatuses.includes("CONFIRMED"), true);
+  });
+
+  it("offers one grid action for an option, a confirmed stay, or an in-house stay", () => {
+    assert.equal(primaryDeskAction("OPTION"), "confirm");
+    assert.equal(primaryDeskAction("CONFIRMED"), "check-in");
+    assert.equal(primaryDeskAction("CHECKED_IN"), "check-out");
+    assert.equal(primaryDeskAction("INQUIRY"), null);
+    assert.equal(primaryDeskAction("CHECKED_OUT"), null);
+    assert.equal(primaryDeskAction("CANCELLED"), null);
   });
 
   it("blocks check-in when the room is out of order or out of service", () => {

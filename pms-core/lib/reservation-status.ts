@@ -22,6 +22,14 @@ export function canModifyStay(status: ReservationStatus) {
 
 export type DeskAction = "confirm" | "option" | "check-in" | "modify" | "cancel" | "no-show" | "check-out" | "extra" | "payment";
 
+/** The one grid action for this status. Other desk actions stay in the drawer. */
+export function primaryDeskAction(status: ReservationStatus): "confirm" | "check-in" | "check-out" | null {
+  if (status === "OPTION") return "confirm";
+  if (status === "CONFIRMED") return "check-in";
+  if (status === "CHECKED_IN") return "check-out";
+  return null;
+}
+
 /** Primary actions shown for the current status. The server transition table is still the authority. */
 export function actionsFor(status: ReservationStatus): DeskAction[] {
   switch (status) {

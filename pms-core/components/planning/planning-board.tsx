@@ -16,7 +16,7 @@ import { updateHousekeepingStatusAction } from "@pms-core/actions/housekeeping";
 import { updateRoomStatusAction } from "@pms-core/actions/rooms";
 import { releasedStatuses, reservationStatusMeta, roomStatusMeta } from "@pms-core/config/status";
 import { reportAction } from "@pms-core/components/ui/action-feedback";
-import type { DeskPermissions, StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
+import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
 import { NewReservationWizard } from "@pms-core/components/planning/new-reservation-wizard";
 import { MoveDialog } from "@pms-core/components/planning/move-dialog";
 import { ReservationDrawer } from "@pms-core/components/planning/reservation-drawer";
@@ -25,6 +25,7 @@ import { Button } from "@pms-core/components/ui/button";
 import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { addDaysISO, eachISODate, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
 import { planningColor } from "@pms-core/lib/planning-color";
+import { primaryDeskAction } from "@pms-core/lib/reservation-status";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import { cn } from "@pms-core/lib/utils";
 import type { PlanningData, PlanningReservation, PlanningView } from "@pms-core/types";
@@ -50,15 +51,23 @@ function Block({
   left,
   width,
   selected,
+  roomStatus,
+  permissions,
+  businessToday,
   onSelect,
   onResize,
+  onChanged,
 }: {
   reservation: PlanningReservation;
   left: number;
   width: number;
   selected: boolean;
+  roomStatus: RoomStatus;
+  permissions: DeskPermissions;
+  businessToday: string;
   onSelect: () => void;
   onResize: (checkOut: string) => void;
+  onChanged: (patch?: StayPatch) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: reservation.id,
@@ -66,6 +75,9 @@ function Block({
   });
   const [draftOut, setDraftOut] = useState<string | null>(null);
   const meta = reservationStatusMeta[reservation.status];
+  const quick = primaryDeskAction(reservation.status);
+  const canQuick =
+    quick === "confirm" ? permissions.canWrite : quick === "check-in" || quick === "check-out" ? permissions.canCheckIn : false;
   const dayWidth = width / Math.max(reservation.nights, 1);
   const extraDays = draftOut ? nightsBetween(reservation.checkOut, draftOut) : 0;
 
@@ -78,6 +90,7 @@ function Block({
       onClick={onSelect}
       className={cn(
         "absolute top-1.5 flex h-10 items-center gap-2 rounded-full px-3 text-left text-[12px] shadow-sm",
+        canQuick && "pr-4",
         selected && "shadow-[0_0_0_2px_var(--pms-surface),0_0_0_4px_var(--pms-alpine)]",
         isDragging && "opacity-40",
       )}
@@ -94,9 +107,36 @@ function Block({
       {reservation.vip ? <span className="text-[10px]">VIP</span> : null}
       <span className="min-w-0 truncate font-medium">{reservation.guestName}</span>
       <span className="hidden truncate text-[11px] opacity-70 lg:inline">{reservation.adults + reservation.children} ospiti</span>
-      <span className="ml-auto hidden text-[10px] opacity-70 xl:inline">
+      <span className={cn("hidden truncate text-[10px] opacity-70 xl:inline", !canQuick && "ml-auto")}>
         {reservation.status === "OPTION" && reservation.payAtProperty ? "Richiesta web" : meta.label}
       </span>
+      {canQuick ? (
+        <span
+          className="relative z-10 ml-auto shrink-0"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <LifecycleActions
+            density="primary"
+            reservation={{
+              id: reservation.id,
+              code: reservation.code,
+              status: reservation.status,
+              total: reservation.total,
+              roomNumber: reservation.roomNumber,
+              roomStatus,
+              checkIn: reservation.checkIn,
+              checkOut: reservation.checkOut,
+              balance: reservation.total,
+            }}
+            extras={[]}
+            permissions={permissions}
+            businessToday={businessToday}
+            payAtProperty={reservation.payAtProperty}
+            onChanged={onChanged}
+          />
+        </span>
+      ) : null}
       <span
         role="separator"
         aria-label="Modifica check-out"
@@ -556,7 +596,14 @@ export function PlanningBoard({
                             left={start * dayWidth + 6}
                             width={(end - start) * dayWidth - 12}
                             selected={reservation.id === selectedId}
+                            roomStatus={room.status}
+                            permissions={permissions}
+                            businessToday={businessToday}
                             onSelect={() => setSelectedId(reservation.id)}
+                            onChanged={(patch) => {
+                              if (patch) applyStayPatch(reservation.id, patch);
+                              else void refreshBoard();
+                            }}
                             onResize={(checkOut) => {
                               if (checkOut <= reservation.checkIn) return;
                               void applyMove(
