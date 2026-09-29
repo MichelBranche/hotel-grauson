@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { rateLimit } from "@pms-core/auth/rate-limit";
 import { wrapAction } from "@pms-core/actions/result";
-import { createReservation, defaultPropertyId, getAvailability } from "@pms-core/integrations/booking-engine";
+import { createReservation, defaultPropertyId, getAvailabilityDetailed } from "@pms-core/integrations/booking-engine";
 
 const searchSchema = z.object({
   checkIn: z.string().min(10),
@@ -17,7 +17,10 @@ const searchSchema = z.object({
 export async function publicAvailabilityAction(input: z.infer<typeof searchSchema>) {
   return wrapAction(async () => {
     const parsed = searchSchema.parse(input);
-    return getAvailability(parsed);
+    const result = await getAvailabilityDetailed(parsed);
+    // Only stay rules (min stay, arrival days…) reach guests; setup problems stay internal.
+    const notices = [...new Set(result.unavailable.filter((item) => item.guestVisible).map((item) => item.reason))];
+    return { offers: result.offers, notices };
   });
 }
 

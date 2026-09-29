@@ -38,7 +38,7 @@ export async function getAvailabilityAction(input: {
 }) {
   return wrapAction(async () => {
     const session = await requirePermission("availability.read");
-    return availabilityService.search({ ...input, propertyId: session.propertyId });
+    return availabilityService.searchDetailed({ ...input, propertyId: session.propertyId });
   });
 }
 

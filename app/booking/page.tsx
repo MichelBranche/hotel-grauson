@@ -28,9 +28,13 @@ export default async function BookingPage({
   const guests = Number.isFinite(adults) && adults > 0 ? Math.min(adults, 6) : 2;
 
   let initialOffers: AvailabilityOffer[] = [];
+  let initialNotices: string[] = [];
   if (checkIn.length >= 10 && checkOut.length >= 10) {
     const result = await publicAvailabilityAction({ checkIn, checkOut, adults: guests });
-    if (result.ok) initialOffers = result.data;
+    if (result.ok) {
+      initialOffers = result.data.offers;
+      initialNotices = result.data.notices;
+    }
   }
 
   return (
@@ -74,6 +78,7 @@ export default async function BookingPage({
           checkOut={checkOut}
           adults={guests}
           initialOffers={initialOffers}
+          initialNotices={initialNotices}
         />
       </section>
     </PageShell>

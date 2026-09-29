@@ -47,8 +47,8 @@ export function BookingWizard({
             setError(result.error);
             return;
           }
-          setOffers(result.data);
-          const first = result.data[0];
+          setOffers(result.data.offers);
+          const first = result.data.offers[0];
           setRoomId(first?.availableRooms[0]?.id ?? "");
           setRatePlanId(first?.ratePlans[0]?.id ?? "");
         }}

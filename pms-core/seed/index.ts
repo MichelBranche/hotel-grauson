@@ -39,6 +39,22 @@ async function main() {
     update: {},
   });
 
+  // One sellable rate plan so the booking engine works as soon as room types have prices.
+  const activePlans = await prisma.ratePlan.count({ where: { propertyId: property.id, active: true } });
+  if (!activePlans) {
+    await prisma.ratePlan.upsert({
+      where: { propertyId_code: { propertyId: property.id, code: "STD" } },
+      create: {
+        propertyId: property.id,
+        code: "STD",
+        name: "Tariffa standard",
+        cancellationPolicy: "Cancellazione gratuita fino a 48 ore prima dell'arrivo.",
+      },
+      update: { active: true },
+    });
+    console.log("Default rate plan «Tariffa standard» ready.");
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (!existing) {
     const passwordHash = await bcrypt.hash(requireOwnerPassword(), 12);

@@ -9,6 +9,7 @@ import { roundMoney } from "@pms-core/lib/money";
 import { occupyingStatuses } from "@pms-core/config/status";
 import { availabilityService } from "@pms-core/services/availability.service";
 import { auditService } from "@pms-core/services/audit.service";
+import { pricingService } from "@pms-core/services/pricing.service";
 import { notificationService } from "@pms-core/services/notification.service";
 
 type Actor = { id?: string | null; name?: string };
@@ -62,15 +63,14 @@ async function quoteStay(input: {
   const property = await prisma.property.findUnique({ where: { id: input.propertyId } });
   const taxRate = parseJson<{ taxRate?: number }>(property?.settings ?? "{}", {}).taxRate ?? 0.1;
 
-  const roomType = await prisma.roomType.findUnique({ where: { id: input.roomTypeId } });
-  const fallbackNightly = roomType?.basePrice ?? 0;
-  let roomRate = fallbackNightly * nights;
-  if (input.ratePlanId) {
-    const base = await prisma.ratePlanPrice.findUnique({
-      where: { ratePlanId_roomTypeId: { ratePlanId: input.ratePlanId, roomTypeId: input.roomTypeId } },
-    });
-    roomRate = (base?.basePrice ?? fallbackNightly) * nights;
-  }
+  const stay = await pricingService.quoteStay({
+    propertyId: input.propertyId,
+    roomTypeId: input.roomTypeId,
+    ratePlanId: input.ratePlanId || undefined,
+    checkIn: input.checkIn,
+    checkOut: input.checkOut,
+  });
+  const roomRate = stay.total;
 
   const extras = [];
   let extrasTotal = 0;
@@ -89,7 +89,15 @@ async function quoteStay(input: {
 
   const taxesTotal = roundMoney((roomRate + extrasTotal) * taxRate);
   const total = roundMoney(roomRate + extrasTotal + taxesTotal);
-  return { nights, roomRate: roundMoney(roomRate), extrasTotal: roundMoney(extrasTotal), taxesTotal, total, extras };
+  return {
+    nights,
+    ratePlanId: stay.plan.id,
+    roomRate: roundMoney(roomRate),
+    extrasTotal: roundMoney(extrasTotal),
+    taxesTotal,
+    total,
+    extras,
+  };
 }
 
 export const reservationService = {
@@ -174,7 +182,7 @@ export const reservationService = {
           code,
           roomId: room.id,
           roomTypeId: room.roomTypeId,
-          ratePlanId: draft.ratePlanId,
+          ratePlanId: quote.ratePlanId,
           guestId: guest.id,
           status: draft.status ?? "CONFIRMED",
           checkIn: toDate(draft.checkIn),

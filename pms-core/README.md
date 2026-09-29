@@ -88,6 +88,22 @@ import { getAvailability, createReservation, getReservation } from "@pms-core/in
 
 The public `/booking` page uses the same functions. There is no second reservation store.
 
+## Rates, seasons and closures
+
+Reception edits everything in `/pms/rates` (rate plans, base prices per room type, seasons, 21-day calendar) and `/pms/availability` (search with refusal reasons, closures). Search, PMS reservation creation and `/booking` all go through `lib/pricing.ts` (pure, tested in `lib/pricing.test.ts`) via `services/pricing.service.ts`.
+
+Nightly price for a room type, rate plan and night, first match wins:
+
+1. Day override (`Rate.price` for that plan, type and date)
+2. Season price for the room type (`RateSeasonPrice`)
+3. Rate plan base price (`RatePlanPrice`)
+4. Room type base price, if above 0
+5. Otherwise the plan is not offered for that stay
+
+Restrictions for a stay combine every night: minimum stay is the highest of the plan, the season and `Inventory.minStay`; maximum stay is the lowest. A season marked closed-to-arrival refuses check-in on its nights and closed-to-departure refuses check-out on its days. `Inventory.closed` closes the whole room type for that night, `Rate.closed` closes one plan, and a `RoomBlock` removes one physical room from sale and from the planning board.
+
+Seasons cover nights: start and end are both nights, end inclusive. Overlap policy: a night belongs to at most one season per rate plan, and a season for "all plans" cannot share nights with any other season. The service rejects overlaps on create and edit. Editing or deleting a season never reprices existing reservations; they keep the total stored at booking.
+
 ## Security
 
 - Server-side session + permission checks

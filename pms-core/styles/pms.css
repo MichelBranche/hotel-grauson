@@ -129,6 +129,17 @@
   border-color: rgb(37 39 33 / 0.13);
 }
 
+/* Planning: nights closed for sale, and dated room closures. */
+[data-pms] .pms-closed-night {
+  background: repeating-linear-gradient(135deg, rgb(138 59 59 / 0.07) 0 6px, transparent 6px 12px);
+}
+
+[data-pms] .pms-room-block {
+  color: #3c3a34;
+  background: repeating-linear-gradient(135deg, #e7e1d5 0 8px, #ddd6c8 8px 16px);
+  box-shadow: inset 0 0 0 1px rgb(37 39 33 / 0.08);
+}
+
 /* Content fades in on section change; opacity only, so fixed and sticky
    children never get a transformed containing block. */
 @keyframes pms-page-in {

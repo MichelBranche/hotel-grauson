@@ -19,6 +19,12 @@ export async function getAvailability(input: {
   return availabilityService.search({ ...input, propertyId });
 }
 
+/** Same search, plus why each unavailable room type was refused. */
+export async function getAvailabilityDetailed(input: Parameters<typeof getAvailability>[0]) {
+  const propertyId = input.propertyId ?? (await defaultPropertyId());
+  return availabilityService.searchDetailed({ ...input, propertyId });
+}
+
 export async function createReservation(draft: Omit<ReservationDraft, "source" | "channel"> & { source?: string }) {
   return reservationService.create(
     {
