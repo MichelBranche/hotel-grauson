@@ -23,7 +23,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-[var(--pms-muted)]">{reservation.code}</p>
-          <h1 className="font-[family-name:var(--font-sora)] text-3xl">
+          <h1 className="text-3xl">
             {guestDisplay(reservation.guest.firstName, reservation.guest.lastName)}
           </h1>
         </div>

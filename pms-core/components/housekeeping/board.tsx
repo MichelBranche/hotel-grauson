@@ -34,7 +34,7 @@ export function HousekeepingBoard({ rooms }: { rooms: Row[] }) {
         return (
           <article key={room.id} className="pms-card p-4">
             <div className="flex items-center justify-between">
-              <p className="font-[family-name:var(--font-sora)] text-xl">{room.number}</p>
+              <p className="font-semibold tabular-nums tracking-[-0.02em] text-xl">{room.number}</p>
               <StatusBadge label={roomStatusMeta[room.status].label} tone={roomStatusMeta[room.status].tone} />
             </div>
             <p className="mt-1 text-sm text-[var(--pms-muted)]">{room.roomType.name}</p>
@@ -48,7 +48,7 @@ export function HousekeepingBoard({ rooms }: { rooms: Row[] }) {
                 <button
                   key={action.status}
                   type="button"
-                  className="h-8 rounded-full border border-[var(--pms-line)] px-3 text-xs"
+                  className="pms-press h-8 rounded-full border border-[var(--pms-line)] px-3 text-xs hover:bg-[var(--pms-surface-dark)]"
                   onClick={async () => {
                     const previous = room.status;
                     setRows((current) => current.map((item) => (item.id === room.id ? { ...item, status: action.status } : item)));

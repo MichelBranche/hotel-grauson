@@ -202,7 +202,7 @@ export function PlanningBoard({
       <section className="min-w-0 flex-1">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-[family-name:var(--font-sora)] text-2xl">Planning camere</h1>
+            <h1 className="text-2xl">Planning camere</h1>
             <p className="text-sm text-[var(--pms-muted)]">Gestisci le prenotazioni e la disponibilità delle camere</p>
           </div>
           <Button onClick={() => setWizardOpen(true)}>
@@ -212,13 +212,13 @@ export function PlanningBoard({
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 rounded-full bg-white/70 p-1">
-            <button type="button" className="grid size-9 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(addDaysISO(anchor, -spans[view]))} aria-label="Periodo precedente">
+            <button type="button" className="pms-press grid size-9 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(addDaysISO(anchor, -spans[view]))} aria-label="Periodo precedente">
               <ChevronLeft className="size-4" />
             </button>
-            <button type="button" className="h-9 rounded-full px-3 text-sm" onClick={() => setAnchor(todayISO())}>
+            <button type="button" className="pms-press h-9 rounded-full px-3 text-sm hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(todayISO())}>
               Oggi
             </button>
-            <button type="button" className="grid size-9 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(addDaysISO(anchor, spans[view]))} aria-label="Periodo successivo">
+            <button type="button" className="pms-press grid size-9 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]" onClick={() => setAnchor(addDaysISO(anchor, spans[view]))} aria-label="Periodo successivo">
               <ChevronRight className="size-4" />
             </button>
           </div>
@@ -239,7 +239,7 @@ export function PlanningBoard({
                 key={item}
                 type="button"
                 onClick={() => setView(item)}
-                className={cn("rounded-full px-3 py-1.5", view === item && "bg-[var(--pms-alpine)] text-[var(--pms-surface)]")}
+                className={cn("pms-press rounded-full px-3 py-1.5", view === item ? "bg-[var(--pms-alpine)] text-[var(--pms-surface)]" : "hover:bg-[var(--pms-surface-dark)]")}
               >
                 {item === "day" ? "Giorno" : item === "week" ? "Settimana" : item === "twoweeks" ? "2 settimane" : "Mese"}
               </button>

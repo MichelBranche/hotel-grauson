@@ -15,7 +15,7 @@ export default async function BookingEnginePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-[family-name:var(--font-sora)] text-2xl">Booking engine</h1>
+        <h1 className="text-2xl">Booking engine</h1>
         <p className="text-sm text-[var(--pms-muted)]">
           Il sito pubblico usa lo stesso AvailabilityService e ReservationService. Una sola source of truth.
         </p>

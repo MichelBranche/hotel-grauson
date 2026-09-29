@@ -23,7 +23,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(20_26_21_/_0.35),rgb(15_20_16_/_0.78))]" />
         <div className="relative flex h-full flex-col justify-end p-10 text-[var(--pms-surface)]">
           <p className="text-[11px] tracking-[0.28em] text-white/70">{branding.wordmark[0]}</p>
-          <p className="font-[family-name:var(--font-sora)] text-5xl">{branding.wordmark[1]}</p>
+          <p className="text-5xl font-semibold tracking-[0.02em]">{branding.wordmark[1]}</p>
           <p className="mt-3 text-sm text-white/70">{branding.locationLine}</p>
         </div>
       </div>
@@ -45,7 +45,7 @@ export default function LoginPage() {
           }}
         >
           <p className="text-xs tracking-[0.22em] text-[var(--pms-muted)]">PROPERTY MANAGEMENT</p>
-          <h1 className="mt-2 font-[family-name:var(--font-sora)] text-3xl">Accedi al PMS</h1>
+          <h1 className="mt-2 text-3xl">Accedi al PMS</h1>
           <p className="mt-2 text-sm text-[var(--pms-muted)]">
             Accedi con l&apos;account owner della struttura.
           </p>

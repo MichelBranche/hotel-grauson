@@ -35,7 +35,7 @@ export function OccupancyWidget({
             className="grid size-24 place-items-center rounded-full"
             style={{ background: `conic-gradient(var(--pms-alpine) ${pct * 3.6}deg, var(--pms-surface-dark) 0)` }}
           >
-            <span className="grid size-16 place-items-center rounded-full bg-[var(--pms-surface)] font-[family-name:var(--font-sora)] text-lg">
+            <span className="grid size-16 place-items-center rounded-full bg-[var(--pms-surface)] font-semibold tabular-nums tracking-[-0.02em] text-lg">
               {pct}%
             </span>
           </div>

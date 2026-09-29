@@ -16,7 +16,7 @@ export default async function AvailabilityPage() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-sora)] text-2xl">Disponibilità</h1>
+      <h1 className="text-2xl">Disponibilità</h1>
       <p className="mt-1 text-sm text-[var(--pms-muted)]">
         {checkIn} → {checkOut} · 2 adulti
       </p>

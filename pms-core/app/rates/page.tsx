@@ -8,12 +8,12 @@ export default async function RatesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-[family-name:var(--font-sora)] text-2xl">Tariffe</h1>
+      <h1 className="text-2xl">Tariffe</h1>
       <div className="grid gap-4 lg:grid-cols-2">
         {plans.map((plan) => (
           <article key={plan.id} className="pms-card p-5">
             <p className="text-xs text-[var(--pms-muted)]">{plan.code}</p>
-            <h2 className="font-[family-name:var(--font-sora)] text-xl">{plan.name}</h2>
+            <h2 className="font-semibold text-xl">{plan.name}</h2>
             <p className="mt-2 text-sm text-[var(--pms-muted)]">{plan.cancellationPolicy}</p>
             <p className="mt-2 text-xs">{plan.isRefundable ? "Rimborsabile" : "Non rimborsabile"} · deposito {plan.depositPercent}%</p>
             <ul className="mt-4 space-y-1 text-sm">

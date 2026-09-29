@@ -35,7 +35,7 @@ export default async function RoomDetailPage({ params }: { params: Promise<{ id:
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.16em] text-[var(--pms-muted)] uppercase">Camera</p>
-            <h1 className="font-[family-name:var(--font-sora)] text-3xl">ROOM {room.number}</h1>
+            <h1 className="text-3xl">ROOM {room.number}</h1>
             <p className="mt-2 text-sm text-[var(--pms-muted)]">
               {room.roomType.name} · {room.assignedFloor?.displayName ?? "Senza piano"}
             </p>

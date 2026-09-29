@@ -11,7 +11,7 @@ export default async function SettingsPage() {
   return (
     <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
       <section className="pms-card p-5">
-        <h1 className="font-[family-name:var(--font-sora)] text-2xl">Impostazioni</h1>
+        <h1 className="text-2xl">Impostazioni</h1>
         <p className="mt-1 text-sm text-[var(--pms-muted)]">Dati della property. La business logic usa propertyId, non il nome hotel.</p>
         <div className="mt-5">
           <SettingsForm property={property} />

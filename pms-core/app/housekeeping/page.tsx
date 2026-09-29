@@ -8,7 +8,7 @@ export default async function HousekeepingPage() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-sora)] text-2xl">Housekeeping</h1>
+      <h1 className="text-2xl">Housekeeping</h1>
       <p className="mt-1 text-sm text-[var(--pms-muted)]">Stato camere, priorità e aggiornamenti rapidi</p>
       <div className="mt-5">
         <HousekeepingBoard rooms={rooms} />

@@ -17,7 +17,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="space-y-5">
       <div className="pms-card p-6">
-        <h1 className="font-[family-name:var(--font-sora)] text-3xl">{guestDisplay(guest.firstName, guest.lastName)}</h1>
+        <h1 className="text-3xl">{guestDisplay(guest.firstName, guest.lastName)}</h1>
         <p className="mt-2 text-sm text-[var(--pms-muted)]">
           {guest.email} · {guest.phone} · {guest.country}
         </p>
