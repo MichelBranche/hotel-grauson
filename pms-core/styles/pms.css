@@ -101,6 +101,22 @@
     transform: scale(0.97);
     transition-duration: 80ms;
   }
+
+  /* Unread bell: a small red pulse. The dot is absent when nothing is unread. */
+  @keyframes pms-bell-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  [data-pms] .pms-bell-unread {
+    background: #c4453c;
+    animation: pms-bell-pulse 1.6s ease-in-out infinite;
+  }
 }
 
 /* Unlayered like .pms-card / .pms-kpi below, which they refine. */
@@ -434,5 +450,10 @@ body:has([data-pms]) {
     animation: none;
     transform: none;
     opacity: 0.6;
+  }
+
+  [data-pms] .pms-bell-unread {
+    animation: none !important;
+    opacity: 1;
   }
 }
