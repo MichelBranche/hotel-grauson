@@ -26,6 +26,7 @@ export function ReservationDesk({
   permissions,
   businessToday,
   balance,
+  expiresLabel = null,
 }: {
   reservation: PlanningReservation;
   stay: {
@@ -42,6 +43,7 @@ export function ReservationDesk({
   permissions: DeskPermissions;
   businessToday: string;
   balance: number;
+  expiresLabel?: string | null;
 }) {
   const router = useRouter();
   const [moveOpen, setMoveOpen] = useState(false);
@@ -134,6 +136,7 @@ export function ReservationDesk({
       <p>
         {reservation.checkIn} → {live.checkOut} · {live.nights} notti
       </p>
+      {live.status === "OPTION" && expiresLabel ? <p className="text-[var(--pms-muted)]">{expiresLabel}</p> : null}
       <p>
         Camera {live.roomNumber} · {live.roomTypeName}
       </p>
