@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { requirePermission } from "@pms-core/auth/guards";
 import { ReservationDesk } from "@pms-core/components/reservations/reservation-desk";
-import { can } from "@pms-core/config/permissions";
+import { can, canForceCancel } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
 import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
@@ -109,7 +109,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
             canCheckIn: can(session.role, "reservations.checkin"),
             canPay: can(session.role, "payments.write"),
             canExtra: can(session.role, "reservations.write"),
-            canForceCancel: session.role === "OWNER" || session.role === "ADMIN",
+            canForceCancel: canForceCancel(session.role),
           }}
         />
         <section className="pms-card p-5">

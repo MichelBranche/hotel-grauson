@@ -16,6 +16,7 @@ enum UserRole {
   RECEPTIONIST
   HOUSEKEEPING
   READ_ONLY
+  DEVELOPER
 }
 
 enum RoomStatus {

@@ -60,7 +60,7 @@ npx prisma migrate deploy --schema pms-core/prisma/schema.prisma
 npm run db:seed
 ```
 
-`npm run db:seed` upserts the organization, the property, and one OWNER user. Rooms, rates, guests, and bookings stay empty. `npm run db:seed:demo` loads a fictional local dataset and must not run in production.
+`npm run db:seed` upserts the organization, the property, one DEVELOPER user, and one OWNER user. An existing password is not replaced. Rooms, rates, guests, and bookings stay empty. `npm run db:seed:demo` loads a fictional local dataset and must not run in production.
 
 The Postgres baseline is `pms-core/prisma/migrations/*_init_postgres`. The old SQLite history is archived in `pms-core/prisma/migrations_sqlite_backup` and is not applied.
 
@@ -70,11 +70,11 @@ Entities include Organization, Property, User, Room, RoomType, Guest, Reservatio
 
 `/pms/login` issues an httpOnly JWT cookie (`pms_session`). `/pms/*` is protected by `proxy.ts` and again in server actions.
 
-Roles: OWNER, ADMIN, MANAGER, RECEPTIONIST, HOUSEKEEPING, READ_ONLY.
+Roles: DEVELOPER, OWNER, ADMIN, MANAGER, RECEPTIONIST, HOUSEKEEPING, READ_ONLY. DEVELOPER has the same permissions as OWNER.
 
 Permissions live in `config/permissions.ts`. Do not scatter `if (role === ...)` checks.
 
-The clean seed creates one OWNER. Set `SEED_OWNER_EMAIL` and `SEED_OWNER_PASSWORD` in `.env` before the first `npm run db:seed`. Change the password after the first login. The password is not printed and is not stored in the repo.
+The clean seed creates a DEVELOPER and an OWNER. Set `SEED_DEVELOPER_EMAIL` to the current login and `SEED_OWNER_EMAIL` to `info@locandagrauson.it`. A password of at least 8 characters is required only when that user does not exist yet. Change it after the first login. Passwords are not printed and are not stored in the repo.
 
 ## Planning
 
@@ -140,7 +140,7 @@ Scripts:
 - `npm run db:generate`
 - `npm run db:migrate:deploy` — apply committed migrations (use this against Supabase)
 - `npm run db:migrate` — `prisma migrate dev` for later schema changes
-- `npm run db:seed` — organization, property, one owner
+- `npm run db:seed` — organization, property, developer, owner
 - `npm run db:seed:demo` — local fictional data only
 - `npm run db:studio`
 - `npm run typecheck`
@@ -152,6 +152,9 @@ Scripts:
 ```
 DATABASE_URL="postgresql://postgres:PASSWORD@db.<project-ref>.supabase.co:5432/postgres"
 AUTH_SECRET="long-random-string"
+SEED_DEVELOPER_EMAIL="developer@grauson.local"
+SEED_DEVELOPER_PASSWORD="set-a-temporary-password"
+SEED_OWNER_EMAIL="info@locandagrauson.it"
 SEED_OWNER_PASSWORD="set-a-temporary-password"
 ```
 

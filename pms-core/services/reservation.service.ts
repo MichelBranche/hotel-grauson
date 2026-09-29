@@ -4,6 +4,7 @@ import { after } from "next/server";
 
 import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
+import { canForceCancel } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
 import { ForbiddenError, DomainError } from "@pms-core/lib/errors";
 import { formatShort, nightsBetween, toDate, toISODate, todayInTimeZone } from "@pms-core/lib/dates";
@@ -517,7 +518,7 @@ export const reservationService = {
     if (!current) throw new DomainError("Prenotazione non trovata.");
 
     const forceCancel = status === "CANCELLED" && Boolean(options?.force);
-    if (forceCancel && actor.role !== "OWNER" && actor.role !== "ADMIN") {
+    if (forceCancel && (!actor.role || !canForceCancel(actor.role))) {
       throw new ForbiddenError("Solo il titolare o un amministratore può annullare un soggiorno già in check-in.");
     }
     assertStatusTransition(current.status, status, { forceCancel, reason: options?.reason });

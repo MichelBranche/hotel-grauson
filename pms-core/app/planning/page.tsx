@@ -3,7 +3,7 @@ import { BedDouble, CalendarDays, Sparkles } from "lucide-react";
 import { requirePermission } from "@pms-core/auth/guards";
 import { PlanningWorkspace } from "@pms-core/components/planning/planning-workspace";
 import { KpiCard } from "@pms-core/components/kpi-card";
-import { can } from "@pms-core/config/permissions";
+import { can, canForceCancel } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
 import { prisma } from "@pms-core/database/client";
 import { dashboardService } from "@pms-core/services/dashboard.service";
@@ -63,7 +63,7 @@ export default async function PlanningPage({
           canCheckIn: can(session.role, "reservations.checkin"),
           canPay: can(session.role, "payments.write"),
           canExtra: can(session.role, "reservations.write"),
-          canForceCancel: session.role === "OWNER" || session.role === "ADMIN",
+          canForceCancel: canForceCancel(session.role),
         }}
         canSetRoomStatus={can(session.role, "rooms.write") || can(session.role, "housekeeping.write")}
         roomStatusVia={can(session.role, "rooms.write") ? "rooms" : "housekeeping"}
