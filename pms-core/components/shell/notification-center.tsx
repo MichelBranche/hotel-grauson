@@ -1,10 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { markNotificationsReadAction } from "@pms-core/actions/lookups";
 
-type Item = { id: string; title: string; body: string; read: boolean; createdAt: Date | string };
+type Item = {
+  id: string;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: Date | string;
+  entity?: string | null;
+  entityId?: string | null;
+};
 
 export function NotificationCenter({
   open,
@@ -46,15 +55,27 @@ export function NotificationCenter({
           {items.length === 0 ? (
             <li className="py-8 text-center text-sm text-[var(--pms-muted)]">Nessuna notifica.</li>
           ) : (
-            items.map((item) => (
-              <li key={item.id} className="rounded-2xl bg-white/70 px-3 py-2">
+            items.map((item) => {
+              const href = item.entity === "Reservation" && item.entityId ? `/pms/reservations/${item.entityId}` : null;
+              const title = (
                 <p className="text-sm font-medium">
                   {item.title}
                   {!item.read ? <span className="ml-2 inline-block size-1.5 rounded-full bg-[var(--pms-alpine)]" /> : null}
                 </p>
-                <p className="text-xs text-[var(--pms-muted)]">{item.body}</p>
-              </li>
-            ))
+              );
+              return (
+                <li key={item.id} className="rounded-2xl bg-white/70 px-3 py-2">
+                  {href ? (
+                    <Link href={href} className="block underline-offset-2 hover:underline" onClick={onClose}>
+                      {title}
+                    </Link>
+                  ) : (
+                    title
+                  )}
+                  <p className="text-xs text-[var(--pms-muted)]">{item.body}</p>
+                </li>
+              );
+            })
           )}
         </ul>
       </div>
