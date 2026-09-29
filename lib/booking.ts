@@ -28,15 +28,3 @@ export function buildBookingUrl({ checkIn, checkOut, guests }: BookingQuery): st
   url.searchParams.set("adults", String(guests));
   return `${url.pathname}${url.search}`;
 }
-
-/** ISO date (yyyy-mm-dd) for today, used as the earliest selectable day. */
-export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-export function nextDayISO(date: string): string {
-  const parsed = new Date(`${date}T12:00:00`);
-  if (Number.isNaN(parsed.valueOf())) return todayISO();
-  parsed.setDate(parsed.getDate() + 1);
-  return parsed.toISOString().slice(0, 10);
-}

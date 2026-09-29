@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 
 import { moveReservationAction, previewReservationChangeAction } from "@pms-core/actions/reservations";
 import { Button } from "@pms-core/components/ui/button";
+import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select } from "@pms-core/components/ui/input";
+import { addDaysISO } from "@pms-core/lib/dates";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import type { PlanningReservation, PlanningRoom } from "@pms-core/types";
 
@@ -160,10 +162,26 @@ function MoveForm({
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Check-in">
-            <Input type="date" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} required />
+            <DatePicker
+              value={checkIn}
+              required
+              rangeStart={checkIn}
+              rangeEnd={checkOut}
+              onChange={(value) => {
+                setCheckIn(value);
+                if (!checkOut || checkOut <= value) setCheckOut(addDaysISO(value, 1));
+              }}
+            />
           </Field>
           <Field label="Check-out">
-            <Input type="date" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} required />
+            <DatePicker
+              value={checkOut}
+              required
+              min={checkIn ? addDaysISO(checkIn, 1) : undefined}
+              rangeStart={checkIn}
+              rangeEnd={checkOut}
+              onChange={setCheckOut}
+            />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">

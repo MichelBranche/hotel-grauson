@@ -5,8 +5,10 @@ import { useMemo, useState } from "react";
 import { createReservationAction } from "@pms-core/actions/reservations";
 import { getAvailabilityAction } from "@pms-core/actions/lookups";
 import { Button } from "@pms-core/components/ui/button";
+import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Textarea } from "@pms-core/components/ui/input";
+import { addDaysISO } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
 import type { AvailabilityOffer, AvailabilityResult, PlanningReservation } from "@pms-core/types";
 
@@ -144,10 +146,24 @@ export function NewReservationWizard({
       {step === 0 ? (
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Check-in">
-            <Input type="date" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} />
+            <DatePicker
+              value={checkIn}
+              rangeStart={checkIn}
+              rangeEnd={checkOut}
+              onChange={(value) => {
+                setCheckIn(value);
+                if (!checkOut || checkOut <= value) setCheckOut(addDaysISO(value, 1));
+              }}
+            />
           </Field>
           <Field label="Check-out">
-            <Input type="date" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} />
+            <DatePicker
+              value={checkOut}
+              min={checkIn ? addDaysISO(checkIn, 1) : undefined}
+              rangeStart={checkIn}
+              rangeEnd={checkOut}
+              onChange={setCheckOut}
+            />
           </Field>
           <Field label="Adulti">
             <Input type="number" min={1} value={adults} onChange={(event) => setAdults(Number(event.target.value))} />

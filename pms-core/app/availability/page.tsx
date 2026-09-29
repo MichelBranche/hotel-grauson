@@ -2,6 +2,7 @@ import { can } from "@pms-core/config/permissions";
 import { requirePermission } from "@pms-core/auth/guards";
 import { ClosuresPanel } from "@pms-core/components/rates/closures-panel";
 import { Button } from "@pms-core/components/ui/button";
+import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { Field, Input } from "@pms-core/components/ui/input";
 import { isDomainError } from "@pms-core/lib/errors";
 import { addDaysISO, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
@@ -53,10 +54,10 @@ export default async function AvailabilityPage({
         </h2>
         <form className="pms-card grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_0.6fr_0.6fr_auto] lg:items-end" method="get">
           <Field label="Check-in">
-            <Input type="date" name="checkIn" defaultValue={checkIn} required />
+            <DatePicker name="checkIn" defaultValue={checkIn} required />
           </Field>
           <Field label="Check-out">
-            <Input type="date" name="checkOut" defaultValue={checkOut} required />
+            <DatePicker name="checkOut" defaultValue={checkOut} required />
           </Field>
           <Field label="Adulti">
             <Input type="number" name="adults" min={1} max={12} defaultValue={adults} />
