@@ -9,6 +9,7 @@ import {
   Radio,
   Settings,
   Sparkles,
+  Sun,
   Tag,
   Users,
   BarChart3,
@@ -26,6 +27,7 @@ import { cn } from "@pms-core/lib/utils";
 import type { UserRole } from "@prisma/client";
 
 const icons = {
+  sun: Sun,
   layout: LayoutDashboard,
   calendar: CalendarDays,
   book: BookOpen,
