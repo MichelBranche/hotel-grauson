@@ -1,10 +1,13 @@
 import type Stripe from "stripe";
 
 import { prisma } from "@pms-core/database/client";
-import { depositCents } from "@pms-core/lib/deposit";
+import { defaultPropertyId } from "@pms-core/integrations/booking-engine";
+import { depositCents, depositEuros, chargedDepositPercent } from "@pms-core/lib/deposit";
+import { toISODate } from "@pms-core/lib/dates";
 import { DomainError } from "@pms-core/lib/errors";
 import { appBaseUrl, stripeClient } from "@pms-core/lib/stripe";
 import { auditService } from "@pms-core/services/audit.service";
+import { reservationService } from "@pms-core/services/reservation.service";
 
 function paymentIntentId(session: Stripe.Checkout.Session) {
   if (!session.payment_intent) return null;
@@ -31,11 +34,19 @@ export async function startCheckout(input: {
   const amount = cents / 100;
   const partial = Boolean(plan?.depositPercent && plan.depositPercent > 0 && plan.depositPercent < 100);
 
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error("STRIPE_SECRET_KEY is not set.");
+    throw new DomainError("Pagamento online non ancora disponibile");
+  }
+
   let sessionUrl: string | null = null;
   try {
     if (cents < 50) {
-      throw new DomainError("L'importo dell'acconto è troppo basso per il pagamento online.");
+      throw new DomainError("Pagamento online non ancora disponibile");
     }
+    await prisma.payment.deleteMany({
+      where: { reservationId: input.reservationId, method: "ONLINE", status: "PENDING", transactionId: null },
+    });
     const payment = await prisma.payment.create({
       data: {
         reservationId: input.reservationId,
@@ -91,12 +102,59 @@ export async function startCheckout(input: {
     return { checkoutUrl: session.url, depositAmount: amount };
   } catch (error) {
     if (!sessionUrl) {
-      await prisma.reservation.delete({ where: { id: input.reservationId } }).catch((cleanupError) => {
-        console.error("Could not remove a booking hold after Checkout failed to open.", cleanupError);
-      });
+      await prisma.payment
+        .deleteMany({
+          where: { reservationId: input.reservationId, method: "ONLINE", status: "PENDING", transactionId: null },
+        })
+        .catch((cleanupError) => {
+          console.error("Could not remove a card payment that never opened Checkout.", cleanupError);
+        });
     }
     throw error;
   }
+}
+
+export async function publicBookingByCode(code: string) {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+  const propertyId = await defaultPropertyId();
+  const reservation = await prisma.reservation.findFirst({
+    where: { code: trimmed, propertyId, source: "website" },
+    include: {
+      guest: { select: { email: true } },
+      roomType: { select: { name: true } },
+      ratePlan: { select: { depositPercent: true } },
+      payments: { select: { method: true, status: true } },
+    },
+  });
+  if (!reservation) return null;
+  const depositPercent = reservation.ratePlan?.depositPercent ?? 0;
+  return {
+    id: reservation.id,
+    propertyId: reservation.propertyId,
+    code: reservation.code,
+    status: reservation.status,
+    roomTypeName: reservation.roomType.name,
+    checkIn: toISODate(reservation.checkIn),
+    checkOut: toISODate(reservation.checkOut),
+    total: reservation.total,
+    ratePlanId: reservation.ratePlanId,
+    email: reservation.guest.email,
+    depositAmount: depositEuros(reservation.total, depositPercent),
+    depositPercent: chargedDepositPercent(depositPercent),
+    paidOnline: reservation.payments.some((item) => item.method === "ONLINE" && item.status === "COMPLETED"),
+  };
+}
+
+export async function confirmPayAtProperty(code: string) {
+  const booking = await publicBookingByCode(code);
+  if (!booking) throw new DomainError("Non troviamo questa prenotazione.");
+  if (booking.status === "CONFIRMED") return { code: booking.code };
+  if (booking.status !== "OPTION") {
+    throw new DomainError("Questa prenotazione non si può confermare da qui.");
+  }
+  await reservationService.updateStatus(booking.id, "CONFIRMED", { name: "booking-engine" });
+  return { code: booking.code };
 }
 
 export function constructStripeEvent(payload: string, signature: string) {

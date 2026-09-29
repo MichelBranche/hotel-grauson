@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { BookingOffers } from "@/components/booking/BookingOffers";
 import { BookingSearch } from "@/components/booking/BookingSearch";
 import { catalogForType, rateLabel } from "@/lib/booking-catalog";
 import { hotel } from "@/lib/content";
 import { publicAvailabilityAction, publicCreateReservationAction } from "@pms-core/actions/booking";
-import { chargedDepositPercent, depositEuros } from "@pms-core/lib/deposit";
 import { formatRange, nightsBetween } from "@pms-core/lib/dates";
-import { formatMoney, formatMoneyExact } from "@pms-core/lib/money";
+import { formatMoney } from "@pms-core/lib/money";
 import type { AvailabilityOffer } from "@pms-core/types";
 
 const MISSING_GUEST = "Inserisci nome, cognome ed email.";
@@ -52,6 +52,7 @@ export function BookingFlow({
   const [error, setError] = useState<string | null>(initialError);
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
+  const router = useRouter();
 
   const nights = checkIn && checkOut ? nightsBetween(checkIn, checkOut) : 0;
   const selected = useMemo(
@@ -90,9 +91,6 @@ export function BookingFlow({
     }
   };
 
-  const deposit = rate ? depositEuros(rate.total, rate.depositPercent) : 0;
-  const depositPercent = rate ? chargedDepositPercent(rate.depositPercent) : 100;
-
   return (
     <div className="space-y-5 sm:space-y-7">
       <BookingSearch
@@ -125,7 +123,7 @@ export function BookingFlow({
       ) : null}
 
       <p className="px-1 text-[0.75rem] text-muted">
-        Check-in dalle 15 · check-out entro le 10 · acconto online per confermare
+        Check-in dalle 15 · check-out entro le 10
       </p>
 
       <div id="disponibilita" className="scroll-mt-28">
@@ -221,26 +219,21 @@ export function BookingFlow({
                       setError(result.error);
                       return;
                     }
-                    if (!result.data.checkoutUrl) {
-                      setError("Non riusciamo ad aprire il pagamento. Riprovate.");
-                      return;
-                    }
-                    window.location.assign(result.data.checkoutUrl);
+                    router.push(`/booking/pagamento?code=${encodeURIComponent(result.data.code)}`);
                     leaving = true;
                   } catch {
-                    setError("Il pagamento non è partito. Riprovate.");
+                    setError("La conferma non è partita. Riprovate.");
                   } finally {
                     if (!leaving) setSending(false);
                   }
                 }}
               >
-                <p className="eyebrow text-muted">Acconto</p>
+                <p className="eyebrow text-muted">Soggiorno</p>
                 <h3 id="prenotazione-title" className="display-md mt-2 max-w-[18ch]">
                   Confermate questa camera
                 </h3>
                 <p className="mt-3 max-w-[46ch] text-[0.875rem] leading-relaxed text-muted">
-                  Nome, cognome ed email per la prenotazione. L&apos;acconto si paga ora e conferma il soggiorno.
-                  {depositPercent < 100 ? " Il resto si salda in locanda." : ""}
+                  Nome, cognome ed email per la prenotazione. Dopo la conferma scegliete come pagare, in struttura o con carta.
                 </p>
                 <p className="mt-4 text-[0.875rem] text-ink">
                   {catalog.label} · {rateLabel(rate.name)} · {formatMoney(rate.total)}
@@ -306,16 +299,14 @@ export function BookingFlow({
                     aria-busy={sending || undefined}
                     className="h-[3.125rem] rounded-full bg-accent px-7 text-[0.8125rem] font-medium text-surface transition-colors duration-500 hover:bg-accent-hover disabled:opacity-60"
                   >
-                    {sending ? "Apertura del pagamento…" : `Paga ${formatMoneyExact(deposit)}`}
+                    {sending ? "Conferma…" : "Conferma"}
                   </button>
-                  <p className="text-[0.8125rem] text-muted">
-                    {depositPercent < 100 ? `Acconto ${depositPercent}%` : "Intero soggiorno"}
-                  </p>
+                  <p className="text-[0.8125rem] text-muted">Poi scegliete come pagare.</p>
                 </div>
               </form>
             ) : (
               <p className="max-w-[46ch] px-1 text-[0.875rem] leading-relaxed text-muted">
-                Scegliete una tariffa per vedere l&apos;acconto e confermare la camera.
+                Scegliete una tariffa per confermare la camera.
               </p>
             )}
           </div>

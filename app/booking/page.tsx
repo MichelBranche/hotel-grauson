@@ -8,7 +8,7 @@ import { publicAvailabilityAction } from "@pms-core/actions/booking";
 import type { AvailabilityOffer } from "@pms-core/types";
 
 const description =
-  "Prenota una camera alla Locanda Grauson, Gimillan di Cogne. L'acconto online conferma il soggiorno.";
+  "Prenota una camera alla Locanda Grauson, Gimillan di Cogne. Dopo la conferma scegliete se pagare in locanda o con carta.";
 
 export const metadata = pageMetadata({
   title: "Prenota",
@@ -66,7 +66,7 @@ export default async function BookingPage({
       <PageHero
         eyebrow={`Soggiorno · ${hotel.hamlet}`}
         title={["Una camera", "a Gimillan"]}
-        lede="Scegliete le notti. L'acconto online conferma la camera."
+        lede="Scegliete le notti, poi come pagare."
         note={"Check-in\ndalle 15"}
         media={{
           src: "/images/camera-locanda.jpg",
