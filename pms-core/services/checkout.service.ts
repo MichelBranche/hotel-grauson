@@ -5,10 +5,11 @@ import { defaultPropertyId } from "@pms-core/integrations/booking-engine";
 import { depositCents, depositEuros, chargedDepositPercent } from "@pms-core/lib/deposit";
 import { toISODate } from "@pms-core/lib/dates";
 import { DomainError } from "@pms-core/lib/errors";
-import { PAY_AT_PROPERTY_NOTE, chosePayAtProperty } from "@pms-core/lib/pay-at-property";
+import { PAY_AT_PROPERTY_NOTE, PAY_AT_PROPERTY_NOTIFICATION, chosePayAtProperty, payAtPropertyNotification } from "@pms-core/lib/pay-at-property";
 import { appendReservationNote } from "@pms-core/lib/reservation-status";
 import { appBaseUrl, stripeClient } from "@pms-core/lib/stripe";
 import { auditService } from "@pms-core/services/audit.service";
+import { notificationService } from "@pms-core/services/notification.service";
 import { reservationService } from "@pms-core/services/reservation.service";
 
 function paymentIntentId(session: Stripe.Checkout.Session) {
@@ -123,7 +124,7 @@ export async function publicBookingByCode(code: string) {
   const reservation = await prisma.reservation.findFirst({
     where: { code: trimmed, propertyId, source: "website" },
     include: {
-      guest: { select: { email: true } },
+      guest: { select: { email: true, firstName: true, lastName: true } },
       roomType: { select: { name: true } },
       ratePlan: { select: { depositPercent: true } },
       payments: { select: { method: true, status: true } },
@@ -142,6 +143,7 @@ export async function publicBookingByCode(code: string) {
     total: reservation.total,
     ratePlanId: reservation.ratePlanId,
     email: reservation.guest.email,
+    guestName: `${reservation.guest.lastName} ${reservation.guest.firstName}`.trim(),
     depositAmount: depositEuros(reservation.total, depositPercent),
     depositPercent: chargedDepositPercent(depositPercent),
     paidOnline: reservation.payments.some((item) => item.method === "ONLINE" && item.status === "COMPLETED"),
@@ -162,7 +164,30 @@ export async function requestPayAtProperty(code: string) {
       name: "booking-engine",
     });
   }
+  await notifyPayAtPropertyOnce(booking);
   return { code: booking.code };
+}
+
+async function notifyPayAtPropertyOnce(booking: { id: string; propertyId: string; code: string; guestName: string }) {
+  const existing = await prisma.notification.findFirst({
+    where: {
+      propertyId: booking.propertyId,
+      type: PAY_AT_PROPERTY_NOTIFICATION,
+      entity: "Reservation",
+      entityId: booking.id,
+    },
+    select: { id: true },
+  });
+  if (existing) return;
+  const notice = payAtPropertyNotification({ code: booking.code, guestName: booking.guestName });
+  await notificationService.create({
+    propertyId: booking.propertyId,
+    type: notice.type,
+    title: notice.title,
+    body: notice.body,
+    entity: "Reservation",
+    entityId: booking.id,
+  });
 }
 
 export function constructStripeEvent(payload: string, signature: string) {

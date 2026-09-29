@@ -16,7 +16,15 @@ import {
 } from "@pms-core/lib/sidebar-pref";
 import type { SessionUser } from "@pms-core/types";
 
-type Note = { id: string; title: string; body: string; read: boolean; createdAt: Date };
+type Note = {
+  id: string;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: Date;
+  entity?: string | null;
+  entityId?: string | null;
+};
 
 export function AppShell({
   user,

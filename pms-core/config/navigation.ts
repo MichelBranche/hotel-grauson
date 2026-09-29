@@ -4,6 +4,7 @@ export type NavItem = {
   href: string;
   label: string;
   icon:
+    | "sun"
     | "layout"
     | "calendar"
     | "book"
@@ -21,6 +22,7 @@ export type NavItem = {
 };
 
 export const navigation: NavItem[] = [
+  { href: "/pms/oggi", label: "Oggi", icon: "sun", permission: "reservations.read" },
   { href: "/pms", label: "Dashboard", icon: "layout", permission: "dashboard.read" },
   { href: "/pms/planning", label: "Planning", icon: "calendar", permission: "planning.read" },
   { href: "/pms/reservations", label: "Prenotazioni", icon: "book", permission: "reservations.read" },
