@@ -8,6 +8,7 @@ import { CommandPalette } from "@pms-core/components/shell/command-palette";
 import { NotificationCenter } from "@pms-core/components/shell/notification-center";
 import { Sidebar } from "@pms-core/components/shell/sidebar";
 import { Topbar } from "@pms-core/components/shell/topbar";
+import { hearWebRequests } from "@pms-core/lib/pms-sound";
 import {
   applySidebarAttr,
   readSidebarCollapsed,
@@ -18,6 +19,7 @@ import type { SessionUser } from "@pms-core/types";
 
 type Note = {
   id: string;
+  type?: string | null;
   title: string;
   body: string;
   read: boolean;
@@ -58,6 +60,10 @@ export function AppShell({
     sync();
     return subscribeSidebarCollapsed(sync);
   }, []);
+
+  useEffect(() => {
+    hearWebRequests(notifications);
+  }, [notifications]);
 
   async function refreshNotes() {
     const result = await getNotificationsAction();
