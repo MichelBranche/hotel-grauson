@@ -9,7 +9,7 @@ import { rateLimit } from "@pms-core/auth/rate-limit";
 import { wrapAction } from "@pms-core/actions/result";
 import { createReservation, defaultPropertyId, getAvailabilityDetailed } from "@pms-core/integrations/booking-engine";
 import { DomainError } from "@pms-core/lib/errors";
-import { confirmPayAtProperty, publicBookingByCode, startCheckout } from "@pms-core/services/checkout.service";
+import { publicBookingByCode, requestPayAtProperty, startCheckout } from "@pms-core/services/checkout.service";
 
 const searchSchema = z.object({
   checkIn: z.string().min(10),
@@ -88,7 +88,7 @@ export async function publicCreateReservationAction(input: {
 
 export async function publicPayAtPropertyAction(code: string) {
   return wrapAction(async () => {
-    const confirmed = await confirmPayAtProperty(code);
+    const requested = await requestPayAtProperty(code);
     try {
       after(() => {
         revalidatePath("/pms", "layout");
@@ -96,7 +96,7 @@ export async function publicPayAtPropertyAction(code: string) {
     } catch (error) {
       console.error("Revalidate skipped after pay-at-property.", error);
     }
-    return confirmed;
+    return requested;
   });
 }
 

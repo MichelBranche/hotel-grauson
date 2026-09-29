@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
 import { reservationStatusMeta } from "@pms-core/config/status";
+import { PAY_AT_PROPERTY_NOTE } from "@pms-core/lib/pay-at-property";
 import { StatusBadge } from "@pms-core/components/ui/badge";
 import { formatLong, nightsBetween } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
@@ -48,7 +49,12 @@ export function ReservationDrawer({
           <p className="text-xs text-[var(--pms-muted)]">#{reservation.code}</p>
           <h2 className="pms-title mt-1 text-xl">{reservation.guestName}</h2>
         </div>
-        <StatusBadge label={meta.label} tone={meta.tone} />
+        <div className="flex flex-col items-end gap-2">
+          <StatusBadge label={meta.label} tone={meta.tone} />
+          {reservation.status === "OPTION" && reservation.payAtProperty ? (
+            <StatusBadge label={PAY_AT_PROPERTY_NOTE} tone="amber" />
+          ) : null}
+        </div>
       </div>
 
       <dl className="mt-5 space-y-3 text-sm">

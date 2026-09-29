@@ -13,6 +13,7 @@ import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
 import { Textarea } from "@pms-core/components/ui/input";
 import { reservationStatusMeta } from "@pms-core/config/status";
+import { PAY_AT_PROPERTY_NOTE } from "@pms-core/lib/pay-at-property";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import type { PlanningReservation, PlanningRoom } from "@pms-core/types";
 
@@ -123,7 +124,12 @@ export function ReservationDesk({
           <p className="text-xs text-[var(--pms-muted)]">{reservation.code}</p>
           <h1 className="text-3xl">{live.guestName}</h1>
         </div>
-        <StatusBadge label={meta.label} tone={meta.tone} />
+        <div className="flex flex-col items-end gap-2">
+          <StatusBadge label={meta.label} tone={meta.tone} />
+          {live.status === "OPTION" && reservation.payAtProperty ? (
+            <StatusBadge label={PAY_AT_PROPERTY_NOTE} tone="amber" />
+          ) : null}
+        </div>
       </div>
       <p>
         {reservation.checkIn} → {live.checkOut} · {live.nights} notti

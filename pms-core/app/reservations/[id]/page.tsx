@@ -8,6 +8,7 @@ import { propertyConfig } from "@pms-core/config/property";
 import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
 import { todayInTimeZone, toISODate } from "@pms-core/lib/dates";
+import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
 import { roundMoney } from "@pms-core/lib/money";
 import { guestDisplay, parseJson } from "@pms-core/lib/utils";
 import { auditService } from "@pms-core/services/audit.service";
@@ -62,6 +63,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
     total: reservation.total,
     currency: reservation.currency,
     notes: reservation.notes,
+    payAtProperty: isPayAtPropertyRequest(reservation),
     vip: reservation.vip,
     color: "#dce8dc",
   };
