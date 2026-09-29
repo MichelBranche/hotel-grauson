@@ -164,6 +164,7 @@ export function ReservationDesk({
         extras={extras}
         permissions={permissions}
         businessToday={businessToday}
+        payAtProperty={reservation.payAtProperty}
         onModify={permissions.canModify ? () => setMoveOpen(true) : undefined}
         onChanged={refresh}
       />

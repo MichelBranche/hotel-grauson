@@ -109,6 +109,7 @@ export function ReservationDrawer({
           extras={extras}
           permissions={permissions}
           businessToday={businessToday}
+          payAtProperty={reservation.payAtProperty}
           onModify={onMove}
           onChanged={onChanged}
         />

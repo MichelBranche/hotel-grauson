@@ -7,6 +7,7 @@ import { reservationRepo } from "@pms-core/database/repositories/reservation.rep
 import { propertyConfig } from "@pms-core/config/property";
 import { ForbiddenError, DomainError } from "@pms-core/lib/errors";
 import { formatShort, nightsBetween, toDate, toISODate, todayInTimeZone } from "@pms-core/lib/dates";
+import { PAY_AT_PROPERTY_NOTE } from "@pms-core/lib/pay-at-property";
 import { parseJson, guestDisplay } from "@pms-core/lib/utils";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import { repriceStay, type ExtraToPrice } from "@pms-core/lib/reservation-quote";
@@ -224,6 +225,17 @@ export const reservationService = {
       },
       include: { guest: true, room: true, roomType: true, payments: true },
       orderBy: { checkIn: "desc" },
+    });
+  },
+
+  countWebRequests(propertyId: string) {
+    return prisma.reservation.count({
+      where: {
+        propertyId,
+        status: "OPTION",
+        source: "website",
+        notes: { contains: PAY_AT_PROPERTY_NOTE },
+      },
     });
   },
 

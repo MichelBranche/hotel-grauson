@@ -23,11 +23,13 @@ export function AppShell({
   children,
   initialNotifications,
   initialUnread,
+  webRequestCount = 0,
 }: {
   user: SessionUser;
   children: ReactNode;
   initialNotifications: Note[];
   initialUnread: number;
+  webRequestCount?: number;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -64,6 +66,7 @@ export function AppShell({
         mobileOpen={menuOpen}
         collapsed={collapsed}
         pendingHref={pendingHref}
+        webRequestCount={webRequestCount}
         onNavigateStart={(href) => setPending(href ? { href, from: pathname } : null)}
         onNavigate={() => setMenuOpen(false)}
       />
