@@ -7,6 +7,7 @@ import { dashboardService } from "@pms-core/services/dashboard.service";
 import { reportService } from "@pms-core/services/report.service";
 import { addDaysISO, todayISO } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
+import { toRecentStays } from "@pms-core/lib/recent-stays";
 import { RevenueChart } from "@pms-core/components/reports/revenue-chart";
 
 export default async function DashboardPage() {
@@ -38,7 +39,7 @@ export default async function DashboardPage() {
         <KpiCard icon={CalendarDays} label="Partenze oggi" value={kpis.departures} />
       </div>
       <RevenueChart data={reports.series} />
-      <OccupancyWidget occupancy={kpis.occupancy} free={kpis.free} cleaning={kpis.cleaning} recent={recent} />
+      <OccupancyWidget occupancy={kpis.occupancy} free={kpis.free} cleaning={kpis.cleaning} recent={toRecentStays(recent)} />
     </div>
   );
 }

@@ -1,29 +1,37 @@
+"use client";
+
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
+
 import { reservationStatusMeta } from "@pms-core/config/status";
 import { StatusBadge } from "@pms-core/components/ui/badge";
-import { formatLong, toISODate } from "@pms-core/lib/dates";
+import { formatLong } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
+import {
+  planningFocusHref,
+  RECENT_LIMIT,
+  type RecentStay,
+} from "@pms-core/lib/recent-stays";
 import { guestDisplay } from "@pms-core/lib/utils";
 
-type Recent = {
-  id: string;
-  code: string;
-  status: keyof typeof reservationStatusMeta;
-  total: number;
-  currency: string;
-  checkIn: Date;
-  guest: { firstName: string; lastName: string };
-};
+export type { RecentStay };
+
+const rowClass =
+  "group -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center justify-between gap-3 rounded-2xl px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--pms-hover)] focus-visible:bg-[var(--pms-hover)]";
 
 export function OccupancyWidget({
   occupancy,
   free,
   cleaning,
   recent,
+  onSelectRecent,
 }: {
   occupancy: number;
   free: number;
   cleaning: number;
-  recent: Recent[];
+  recent: RecentStay[];
+  /** On Planning: focus the stay in place. Elsewhere rows link to Planning. */
+  onSelectRecent?: (stay: RecentStay) => void;
 }) {
   const pct = Math.round(occupancy * 100);
   return (
@@ -47,19 +55,44 @@ export function OccupancyWidget({
       </section>
       <section className="pms-card p-5">
         <p className="text-sm text-[var(--pms-muted)]">Prenotazioni recenti</p>
-        <ul className="mt-3 space-y-3">
-          {recent.slice(0, 4).map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-3 text-sm">
-              <span>
-                <span className="block font-medium">{guestDisplay(item.guest.firstName, item.guest.lastName)}</span>
-                <span className="text-xs text-[var(--pms-muted)]">{formatLong(toISODate(item.checkIn))}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                <span>{formatMoney(item.total, item.currency)}</span>
-                <StatusBadge label={reservationStatusMeta[item.status].label} tone={reservationStatusMeta[item.status].tone} />
-              </span>
-            </li>
-          ))}
+        <ul className="mt-2 space-y-1">
+          {recent.slice(0, RECENT_LIMIT).map((item) => {
+            const guest = guestDisplay(item.guest.firstName, item.guest.lastName);
+            const body = (
+              <>
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{guest}</span>
+                  <span className="text-xs text-[var(--pms-muted)]">{formatLong(item.checkIn)}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span>{formatMoney(item.total, item.currency)}</span>
+                  <StatusBadge label={reservationStatusMeta[item.status].label} tone={reservationStatusMeta[item.status].tone} />
+                  <ChevronRight
+                    className="size-4 text-[var(--pms-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                    aria-hidden
+                  />
+                </span>
+              </>
+            );
+            return (
+              <li key={item.id}>
+                {onSelectRecent ? (
+                  <button
+                    type="button"
+                    className={rowClass}
+                    aria-label={`Apri ${guest} sul planning`}
+                    onClick={() => onSelectRecent(item)}
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  <Link href={planningFocusHref(item)} className={rowClass} aria-label={`Apri ${guest} sul planning`}>
+                    {body}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>

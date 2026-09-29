@@ -6,7 +6,8 @@ import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import type { RoomStatus } from "@prisma/client";
 import { BedDouble, CalendarDays, ChevronLeft, ChevronRight, CircleCheck, Plus, ShieldCheck, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { getPlanningAction } from "@pms-core/actions/lookups";
@@ -33,16 +34,29 @@ const ROOM_COL = 188;
 const widths: Record<PlanningView, number> = { day: 160, week: 104, twoweeks: 58, month: 36 };
 const spans: Record<PlanningView, number> = { day: 1, week: 7, twoweeks: 14, month: 31 };
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const FOCUS_MISSING = "Prenotazione non trovata sul planning.";
+
+export type PlanningBoardHandle = {
+  focusStay: (id: string, checkIn?: string, status?: string) => void;
+};
+
+function planningAnchorForStay(checkIn: string, view: PlanningView = "twoweeks") {
+  return addDaysISO(checkIn, -Math.floor(spans[view] / 2));
+}
+
 function Block({
   reservation,
   left,
   width,
+  selected,
   onSelect,
   onResize,
 }: {
   reservation: PlanningReservation;
   left: number;
   width: number;
+  selected: boolean;
   onSelect: () => void;
   onResize: (checkOut: string) => void;
 }) {
@@ -60,9 +74,11 @@ function Block({
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      data-reservation-id={reservation.id}
       onClick={onSelect}
       className={cn(
         "absolute top-1.5 flex h-10 items-center gap-2 rounded-full px-3 text-left text-[12px] shadow-sm",
+        selected && "shadow-[0_0_0_2px_var(--pms-surface),0_0_0_4px_var(--pms-alpine)]",
         isDragging && "opacity-40",
       )}
       style={{
@@ -115,6 +131,7 @@ const ROOM_STATUS_CHOICE_ICON = {
 } as const;
 
 export function PlanningBoard({
+  ref,
   initial,
   extras,
   plans,
@@ -122,7 +139,9 @@ export function PlanningBoard({
   businessToday,
   canSetRoomStatus,
   roomStatusVia,
+  initialFocus,
 }: {
+  ref?: Ref<PlanningBoardHandle>;
   initial: PlanningData;
   extras: { id: string; name: string; price: number }[];
   plans: { id: string; code: string; name: string }[];
@@ -130,11 +149,13 @@ export function PlanningBoard({
   businessToday: string;
   canSetRoomStatus: boolean;
   roomStatusVia: "rooms" | "housekeeping";
+  initialFocus?: { id: string; checkIn?: string } | null;
 }) {
+  const router = useRouter();
   const [data, setData] = useState(initial);
   const [view, setView] = useState<PlanningView>("twoweeks");
   const [anchor, setAnchor] = useState(initial.from);
-  const [selectedId, setSelectedId] = useState<string | null>(initial.reservations[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialFocus?.id ?? initial.reservations[0]?.id ?? null);
   const [moveOpen, setMoveOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [active, setActive] = useState<PlanningReservation | null>(null);
@@ -144,16 +165,77 @@ export function PlanningBoard({
   const scroller = useRef<HTMLDivElement>(null);
   const loadId = useRef(0);
   const moving = useRef(new Set<string>());
+  const pendingFocus = useRef<{ id: string; anchor: string } | null>(null);
+  const urlFocusDone = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const from = anchor;
   const to = addDaysISO(anchor, spans[view]);
 
+  function scrollStayIntoView(id: string) {
+    const escaped = globalThis.CSS.escape(id);
+    requestAnimationFrame(() => {
+      scroller.current
+        ?.querySelector(`[data-reservation-id="${escaped}"]`)
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  }
+
+  const focusStay = useCallback(
+    (id: string, checkIn?: string, status?: string) => {
+      if (status === "CANCELLED" || status === "NO_SHOW") {
+        toast.error(FOCUS_MISSING);
+        return;
+      }
+      const existing = data.reservations.find((item) => item.id === id);
+      if (existing && existing.checkIn < to && existing.checkOut > from) {
+        setSelectedId(id);
+        scrollStayIntoView(id);
+        return;
+      }
+      const iso = checkIn && ISO_DATE.test(checkIn) ? checkIn : existing?.checkIn;
+      if (iso && iso >= from && iso < to) {
+        toast.error(FOCUS_MISSING);
+        return;
+      }
+      if (!iso) {
+        toast.error(FOCUS_MISSING);
+        return;
+      }
+      const next = planningAnchorForStay(iso, view);
+      pendingFocus.current = { id, anchor: next };
+      setAnchor(next);
+      setRangePicker(next);
+    },
+    [data.reservations, from, to, view],
+  );
+
+  useImperativeHandle(ref, () => ({ focusStay }), [focusStay]);
+
+  useEffect(() => {
+    if (urlFocusDone.current || !initialFocus?.id) return;
+    urlFocusDone.current = true;
+    focusStay(initialFocus.id, initialFocus.checkIn);
+    router.replace("/pms/planning", { scroll: false });
+    // Once on mount: a later initialFocus=null from router.replace must not re-run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const token = ++loadId.current;
+    const focus = pendingFocus.current;
     let cancelled = false;
     void getPlanningAction(from, to).then((result) => {
-      if (!cancelled && token === loadId.current && result.ok) setData(result.data);
+      if (cancelled || token !== loadId.current || !result.ok) return;
+      setData(result.data);
+      if (!focus || focus.anchor !== from) return;
+      pendingFocus.current = null;
+      if (result.data.reservations.some((item) => item.id === focus.id)) {
+        setSelectedId(focus.id);
+        scrollStayIntoView(focus.id);
+      } else {
+        toast.error(FOCUS_MISSING);
+      }
     });
     return () => {
       cancelled = true;
@@ -469,6 +551,7 @@ export function PlanningBoard({
                             reservation={reservation}
                             left={start * dayWidth + 6}
                             width={(end - start) * dayWidth - 12}
+                            selected={reservation.id === selectedId}
                             onSelect={() => setSelectedId(reservation.id)}
                             onResize={(checkOut) => {
                               if (checkOut <= reservation.checkIn) return;

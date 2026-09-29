@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 
 import type { SessionUser } from "@pms-core/types";
 import { logoutAction } from "@pms-core/actions/auth";
@@ -11,22 +11,39 @@ export function Topbar({
   onSearch,
   onNotifications,
   onMenu,
+  sidebarCollapsed,
+  onToggleSidebar,
 }: {
   user: SessionUser;
   unread: number;
   onSearch: () => void;
   onNotifications: () => void;
   onMenu: () => void;
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
 }) {
+  const SidebarIcon = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose;
+  const sidebarLabel = sidebarCollapsed ? "Espandi menu" : "Comprimi menu";
   return (
     <header className="flex h-16 items-center gap-3 px-4 md:px-6">
       <button
         type="button"
         onClick={onMenu}
-        className="pms-press grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]"
+        className="pms-press grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)] md:hidden"
         aria-label="Apri menu"
       >
         <Menu className="size-5" strokeWidth={1.6} />
+      </button>
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        className="pms-press hidden size-10 shrink-0 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)] md:grid"
+        aria-label={sidebarLabel}
+        aria-controls="pms-sidebar"
+        aria-expanded={!sidebarCollapsed}
+        title={sidebarLabel}
+      >
+        <SidebarIcon className="size-5" strokeWidth={1.6} />
       </button>
 
       <button
