@@ -52,7 +52,7 @@ Next.js route files live in `/app/pms` and `/app/booking`. They are thin wrapper
 
 ## Database
 
-Prisma + Supabase Postgres. `DATABASE_URL` is the direct session URI on port 5432 (`db.<project-ref>.supabase.co`). The schema does not use `DIRECT_URL`.
+Prisma + Supabase Postgres. `DATABASE_URL` stays the session URI on port 5432 for migrations. The Next.js client rewrites a Supabase URL to the transaction pooler on port 6543 (`pgbouncer=true`, `connection_limit=1`). The schema does not use `DIRECT_URL`.
 
 ```bash
 npm run db:generate

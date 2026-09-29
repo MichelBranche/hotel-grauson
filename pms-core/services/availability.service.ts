@@ -173,7 +173,7 @@ export const availabilityService = {
         checkOut: { gt: toDate(input.checkIn) },
         ...(input.excludeReservationId ? { id: { not: input.excludeReservationId } } : {}),
       },
-      include: { guest: true },
+      select: { checkIn: true, checkOut: true, guest: { select: { lastName: true } } },
     });
     if (conflicts[0]) {
       const conflict = conflicts[0];

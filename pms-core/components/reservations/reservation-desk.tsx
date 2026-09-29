@@ -109,6 +109,7 @@ export function ReservationDesk({
         nights: patch.nights,
         balance: Math.max(0, patch.total - current.paid),
       }));
+      return;
     }
     router.refresh();
   }

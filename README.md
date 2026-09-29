@@ -96,9 +96,9 @@ SEED_OWNER_EMAIL="owner@grauson.local"
 SEED_OWNER_PASSWORD="set-a-temporary-password"
 ```
 
-Database locale e di produzione: Postgres su Supabase (progetto `hotel-grauson`, region `eu-west-2`). Una sola `DATABASE_URL` sulla porta 5432 (connessione diretta): Prisma non richiede `DIRECT_URL`. Sostituisci `PASSWORD` nel `.env` locale. Non committare `.env`.
+Database locale e di produzione: Postgres su Supabase (progetto `hotel-grauson`, region `eu-west-2`). `DATABASE_URL` resta la session URI (porta 5432) così `prisma migrate` continua a funzionare. Prisma non richiede `DIRECT_URL`. Sostituisci `PASSWORD` nel `.env` locale. Non committare `.env`.
 
-Su Vercel imposta le stesse variabili `DATABASE_URL` e `AUTH_SECRET`, senza valori di esempio. Se il runtime non raggiunge l'host diretto `db.<ref>.supabase.co` (spesso solo IPv6), usa al suo posto la session URI del pooler Supavisor, sempre sulla porta 5432, sempre in `DATABASE_URL`. Il pooler in transaction mode (porta 6543) non è configurato qui.
+Il client Next riscrive quella URL, se è il pooler o l'host diretto Supabase, sul transaction pooler porta 6543 con `pgbouncer=true` e `connection_limit=1`. La session mode (5432, pool da 15) fa attendere i salvataggi quando il pool è pieno. Su Vercel imposta `DATABASE_URL` e `AUTH_SECRET`, senza valori di esempio.
 
 ## Deploy
 
