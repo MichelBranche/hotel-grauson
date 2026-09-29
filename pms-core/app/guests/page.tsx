@@ -10,7 +10,7 @@ export default async function GuestsPage() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-sora)] text-2xl">Ospiti</h1>
+      <h1 className="text-2xl">Ospiti</h1>
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {guests.map((guest) => (
           <Link key={guest.id} href={`/pms/guests/${guest.id}`} className="pms-card p-4">

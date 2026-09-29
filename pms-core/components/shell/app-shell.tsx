@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { getNotificationsAction } from "@pms-core/actions/lookups";
@@ -27,6 +28,11 @@ export function AppShell({
   const [notesOpen, setNotesOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
   const [unread, setUnread] = useState(initialUnread);
+  const pathname = usePathname();
+  const [pending, setPending] = useState<{ href: string; from: string } | null>(null);
+  // Pending only while we are still on the page the click came from; once the
+  // router commits the new pathname it clears itself without an effect.
+  const pendingHref = pending && pending.from === pathname ? pending.href : null;
 
   async function refreshNotes() {
     const result = await getNotificationsAction();
@@ -38,7 +44,13 @@ export function AppShell({
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      <Sidebar role={user.role} mobileOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
+      <Sidebar
+        role={user.role}
+        mobileOpen={menuOpen}
+        pendingHref={pendingHref}
+        onNavigateStart={(href) => setPending(href ? { href, from: pathname } : null)}
+        onNavigate={() => setMenuOpen(false)}
+      />
       {menuOpen ? (
         <button
           type="button"
@@ -47,7 +59,8 @@ export function AppShell({
           onClick={() => setMenuOpen(false)}
         />
       ) : null}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="pms-progress" data-active={pendingHref ? "true" : "false"} aria-hidden />
         <Topbar
           user={user}
           unread={unread}
@@ -55,7 +68,11 @@ export function AppShell({
           onNotifications={() => setNotesOpen(true)}
           onMenu={() => setMenuOpen((value) => !value)}
         />
-        <main className="min-h-0 flex-1 overflow-auto overscroll-contain pms-scroll px-4 pb-6 md:px-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-auto overscroll-contain pms-scroll px-4 pb-6 md:px-6" aria-busy={pendingHref ? true : undefined}>
+          <div key={pathname} className="pms-page-in">
+            {children}
+          </div>
+        </main>
       </div>
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
       <NotificationCenter

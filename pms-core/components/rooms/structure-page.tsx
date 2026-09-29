@@ -32,7 +32,7 @@ export function StructurePage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-sora)] text-2xl">Camere</h1>
+        <h1 className="text-2xl">Camere</h1>
         <p className="mt-1 text-sm text-[var(--pms-muted)]">
           Struttura della property: tipologie, camere fisiche e piani. I prezzi di vendita restano sui rate plan.
         </p>

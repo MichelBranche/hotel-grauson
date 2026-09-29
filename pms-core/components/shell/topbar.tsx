@@ -23,7 +23,7 @@ export function Topbar({
       <button
         type="button"
         onClick={onMenu}
-        className="grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]"
+        className="pms-press grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]"
         aria-label="Apri menu"
       >
         <Menu className="size-5" strokeWidth={1.6} />
@@ -32,7 +32,7 @@ export function Topbar({
       <button
         type="button"
         onClick={onSearch}
-        className="flex h-11 min-w-0 flex-1 items-center gap-3 rounded-full border border-[var(--pms-line)] bg-white/70 px-4 text-left text-sm text-[var(--pms-muted)]"
+        className="flex h-11 min-w-0 flex-1 items-center gap-3 rounded-full border border-[var(--pms-line)] bg-white/70 px-4 text-left text-sm text-[var(--pms-muted)] hover:border-[rgb(37_39_33_/_0.16)] hover:bg-white"
       >
         <Search className="size-4 shrink-0" />
         <span className="truncate">Cerca prenotazione, ospite, camera…</span>
@@ -44,7 +44,7 @@ export function Topbar({
       <button
         type="button"
         onClick={onNotifications}
-        className="relative grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]"
+        className="pms-press relative grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]"
         aria-label="Notifiche"
       >
         <Bell className="size-4" />
@@ -65,7 +65,7 @@ export function Topbar({
           <span className="block text-[11px] text-[var(--pms-muted)]">Amministratore</span>
         </span>
         <form action={logoutAction}>
-          <button type="submit" className="text-xs text-[var(--pms-muted)] underline-offset-2 hover:underline">
+          <button type="submit" className="rounded-full px-1 text-xs text-[var(--pms-muted)] underline-offset-2 hover:text-[var(--pms-text)] hover:underline">
             Esci
           </button>
         </form>

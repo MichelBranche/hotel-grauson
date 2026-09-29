@@ -21,7 +21,7 @@ export default async function ReservationsPage({
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-sora)] text-2xl">Prenotazioni</h1>
+      <h1 className="text-2xl">Prenotazioni</h1>
       {room ? <p className="mt-1 text-sm text-[var(--pms-muted)]">Filtro camera {room}</p> : null}
       <div className="pms-card mt-5 overflow-auto">
         <table className="w-full min-w-[720px] text-left text-sm">

@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-[family-name:var(--font-sora)] text-2xl">Dashboard</h1>
+        <h1 className="text-2xl">Dashboard</h1>
         <p className="text-sm text-[var(--pms-muted)]">Sintesi operativa della struttura</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

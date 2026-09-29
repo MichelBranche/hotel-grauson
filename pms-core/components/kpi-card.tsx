@@ -17,7 +17,7 @@ export function KpiCard({
         <Icon className="size-4" strokeWidth={1.6} />
       </span>
       <span>
-        <span className="block font-[family-name:var(--font-sora)] text-xl leading-none">{value}</span>
+        <span className="block font-semibold tabular-nums tracking-[-0.02em] text-xl leading-none">{value}</span>
         <span className="mt-1 block text-xs text-[var(--pms-muted)]">
           {label}
           {hint ? ` · ${hint}` : ""}

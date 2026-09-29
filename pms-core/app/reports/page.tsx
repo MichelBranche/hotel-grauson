@@ -24,12 +24,12 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="font-[family-name:var(--font-sora)] text-2xl">Report</h1>
+      <h1 className="text-2xl">Report</h1>
       <div className="grid gap-3 md:grid-cols-3">
         {cards.map(([label, value]) => (
           <article key={label} className="pms-card p-4">
             <p className="text-xs text-[var(--pms-muted)]">{label}</p>
-            <p className="mt-2 font-[family-name:var(--font-sora)] text-2xl">{value}</p>
+            <p className="mt-2 font-semibold tabular-nums tracking-[-0.02em] text-2xl">{value}</p>
           </article>
         ))}
       </div>

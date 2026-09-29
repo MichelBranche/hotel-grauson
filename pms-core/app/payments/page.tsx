@@ -9,7 +9,7 @@ export default async function PaymentsPage() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-sora)] text-2xl">Pagamenti</h1>
+      <h1 className="text-2xl">Pagamenti</h1>
       <div className="pms-card mt-5 overflow-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="text-xs text-[var(--pms-muted)]">

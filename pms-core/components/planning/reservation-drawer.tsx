@@ -78,7 +78,7 @@ export function ReservationDrawer({
 
       <div className="mt-5 rounded-2xl bg-white/70 px-4 py-3">
         <p className="text-xs text-[var(--pms-muted)]">Totale</p>
-        <p className="font-[family-name:var(--font-sora)] text-2xl">{formatMoney(reservation.total, reservation.currency)}</p>
+        <p className="font-semibold tabular-nums tracking-[-0.02em] text-2xl">{formatMoney(reservation.total, reservation.currency)}</p>
       </div>
 
       {reservation.notes ? <p className="mt-4 text-sm text-[var(--pms-muted)]">{reservation.notes}</p> : null}
