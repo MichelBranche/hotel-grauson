@@ -29,11 +29,14 @@ export default async function BookingPage({
 
   let initialOffers: AvailabilityOffer[] = [];
   let initialNotices: string[] = [];
+  let initialError: string | null = null;
   if (checkIn.length >= 10 && checkOut.length >= 10) {
     const result = await publicAvailabilityAction({ checkIn, checkOut, adults: guests });
     if (result.ok) {
       initialOffers = result.data.offers;
       initialNotices = result.data.notices;
+    } else {
+      initialError = result.error;
     }
   }
 
@@ -79,6 +82,7 @@ export default async function BookingPage({
           adults={guests}
           initialOffers={initialOffers}
           initialNotices={initialNotices}
+          initialError={initialError}
         />
       </section>
     </PageShell>
