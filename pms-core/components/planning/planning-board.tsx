@@ -14,7 +14,7 @@ import { getPlanningAction } from "@pms-core/actions/lookups";
 import { moveReservationAction } from "@pms-core/actions/reservations";
 import { updateHousekeepingStatusAction } from "@pms-core/actions/housekeeping";
 import { updateRoomStatusAction } from "@pms-core/actions/rooms";
-import { releasedStatuses, reservationStatusMeta, roomStatusMeta } from "@pms-core/config/status";
+import { releasedStatuses, roomStatusMeta } from "@pms-core/config/status";
 import { reportAction } from "@pms-core/components/ui/action-feedback";
 import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
 import { NewReservationWizard } from "@pms-core/components/planning/new-reservation-wizard";
@@ -24,6 +24,7 @@ import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
 import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { addDaysISO, eachISODate, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
+import { planningBarLabel, planningBarTitle } from "@pms-core/lib/planning-bar-label";
 import { planningColor } from "@pms-core/lib/planning-color";
 import { primaryDeskAction } from "@pms-core/lib/reservation-status";
 import { formatMoneyExact } from "@pms-core/lib/money";
@@ -74,12 +75,17 @@ function Block({
     data: { reservation },
   });
   const [draftOut, setDraftOut] = useState<string | null>(null);
-  const meta = reservationStatusMeta[reservation.status];
   const quick = primaryDeskAction(reservation.status);
   const canQuick =
     quick === "confirm" ? permissions.canWrite : quick === "check-in" || quick === "check-out" ? permissions.canCheckIn : false;
   const dayWidth = width / Math.max(reservation.nights, 1);
   const extraDays = draftOut ? nightsBetween(reservation.checkOut, draftOut) : 0;
+  const barWidth = Math.max(width + extraDays * dayWidth, 8);
+  const showAction = canQuick && barWidth >= 132;
+  const pad = barWidth < 72 ? 12 : 24;
+  const textWidth = Math.max(0, barWidth - pad - (showAction ? 84 : 0));
+  const title = planningBarTitle(reservation);
+  const label = planningBarLabel({ ...reservation, textWidth });
 
   return (
     <div
@@ -89,28 +95,24 @@ function Block({
       data-reservation-id={reservation.id}
       onClick={onSelect}
       className={cn(
-        "absolute top-1.5 flex h-10 items-center gap-2 rounded-full px-3 text-left text-[12px] shadow-sm",
-        canQuick && "pr-4",
+        "absolute top-1.5 flex h-10 items-center gap-2 overflow-hidden rounded-full text-left text-[12px] shadow-sm",
+        barWidth < 72 ? "px-1.5" : "px-3",
+        showAction && "pr-4",
         selected && "shadow-[0_0_0_2px_var(--pms-surface),0_0_0_4px_var(--pms-alpine)]",
         isDragging && "opacity-40",
       )}
       style={{
         left,
-        width: Math.max(width + extraDays * dayWidth, 72),
+        width: barWidth,
         background: reservation.color,
         transform: CSS.Translate.toString(transform),
       }}
-      title={`${reservation.guestName} · ${reservation.roomNumber} · ${reservation.checkIn} → ${reservation.checkOut}${
-        reservation.status === "OPTION" && reservation.payAtProperty ? " · Richiesta web, paga in struttura" : ""
-      }`}
+      title={title}
+      aria-label={title}
     >
-      {reservation.vip ? <span className="text-[10px]">VIP</span> : null}
-      <span className="min-w-0 truncate font-medium">{reservation.guestName}</span>
-      <span className="hidden truncate text-[11px] opacity-70 lg:inline">{reservation.adults + reservation.children} ospiti</span>
-      <span className={cn("hidden truncate text-[10px] opacity-70 xl:inline", !canQuick && "ml-auto")}>
-        {reservation.status === "OPTION" && reservation.payAtProperty ? "Richiesta web" : meta.label}
-      </span>
-      {canQuick ? (
+      {reservation.vip && textWidth >= 200 ? <span className="shrink-0 text-[10px]">VIP</span> : null}
+      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+      {showAction ? (
         <span
           className="relative z-10 ml-auto shrink-0"
           onPointerDown={(event) => event.stopPropagation()}
@@ -622,8 +624,12 @@ export function PlanningBoard({
           </div>
           <DragOverlay>
             {active ? (
-              <div className="flex h-10 items-center rounded-full px-3 text-xs shadow-lg" style={{ background: active.color, width: 180 }}>
-                {active.guestName}
+              <div
+                className="flex h-10 items-center overflow-hidden rounded-full px-3 text-xs shadow-lg"
+                style={{ background: active.color, width: 180 }}
+                title={planningBarTitle(active)}
+              >
+                <span className="truncate">{planningBarLabel({ ...active, textWidth: 156 })}</span>
               </div>
             ) : null}
           </DragOverlay>
