@@ -1,5 +1,4 @@
 import { SiteEffects } from "@/components/effects/SiteEffects";
-import { DemoControls } from "@/components/layout/DemoControls";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 
@@ -35,9 +34,6 @@ export function PageShell({
       <Footer pull={footerPull} compact={footerCompact} />
 
       <SiteEffects />
-
-      {/* Demo controls: remove them and the calendar takes over on its own. */}
-      <DemoControls />
     </>
   );
 }

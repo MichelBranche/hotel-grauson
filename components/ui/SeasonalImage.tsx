@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { useSeason } from "@/components/providers/SeasonProvider";
-import { type Season, type SeasonSlot, seasons } from "@/lib/seasons";
+import { type SeasonPhotos, type SeasonSlot, photoSeason, seasons } from "@/lib/seasons";
 
 const FADE_MS = 900;
 
@@ -31,11 +31,12 @@ export function SeasonalImage({
   unoptimized?: boolean;
 }) {
   const { season } = useSeason();
-  const [settled, setSettled] = useState<Season>(season);
-  const [decoded, setDecoded] = useState<Season | null>(null);
+  const shown = photoSeason(season);
+  const [settled, setSettled] = useState<SeasonPhotos>(shown);
+  const [decoded, setDecoded] = useState<SeasonPhotos | null>(null);
 
   const base = seasons[settled].media[slot];
-  const incoming = season === settled ? null : seasons[season].media[slot];
+  const incoming = shown === settled ? null : seasons[shown].media[slot];
 
   return (
     <>
@@ -61,14 +62,14 @@ export function SeasonalImage({
           quality={quality}
           unoptimized={unoptimized}
           onLoad={() => {
-            setDecoded(season);
+            setDecoded(shown);
             // Hand the layer over after the fade: `transitionend` never fires
             // when a cached image paints opaque on its first frame.
-            window.setTimeout(() => setSettled(season), FADE_MS + 60);
+            window.setTimeout(() => setSettled(shown), FADE_MS + 60);
           }}
           style={{ transitionDuration: `${FADE_MS}ms` }}
           className={`${className} transition-opacity [transition-timing-function:var(--ease-skin)] ${
-            decoded === season ? "opacity-100" : "opacity-0"
+            decoded === shown ? "opacity-100" : "opacity-0"
           }`}
         />
       ) : null}

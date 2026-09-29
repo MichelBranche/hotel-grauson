@@ -33,10 +33,15 @@ function unit(i: number, salt: number) {
   return x - Math.floor(x);
 }
 
+/** Stable across Node and the browser. Raw Math.sin tails differ enough to break hydration. */
+function fixed(value: number, digits: number) {
+  return value.toFixed(digits);
+}
+
 /** Leaves that stay in the photograph: small, slow, clipped by the frame. */
 const INSIDE_LEAVES: LeafStyle[] = Array.from({ length: INSIDE_COUNT }, (_, i) => ({
-  "--top": `${-12 + unit(i, 1) * 16}%`,
-  "--left": `${3 + unit(i, 2) * 90}%`,
+  "--top": `${fixed(-12 + unit(i, 1) * 16, 4)}%`,
+  "--left": `${fixed(3 + unit(i, 2) * 90, 4)}%`,
   "--ox": `${Math.round(-60 + unit(i, 3) * 120)}px`,
   "--oy": `${Math.round(-70 + unit(i, 4) * 140)}px`,
   "--dur": `${Math.round(10_500 + unit(i, 5) * 6_000)}ms`,
@@ -58,8 +63,10 @@ const STRAY_LEAVES: LeafStyle[] = Array.from({ length: STRAY_COUNT }, (_, i) => 
   const drift = (6 + unit(i, 11) * 10) * (fromLeft ? -1 : 1);
 
   return {
-    "--top": `${8 + unit(i, 12) * 22}vh`,
-    "--left": fromLeft ? `${2 + unit(i, 13) * 16}%` : `${82 + unit(i, 13) * 14}%`,
+    "--top": `${fixed(8 + unit(i, 12) * 22, 4)}vh`,
+    "--left": fromLeft
+      ? `${fixed(2 + unit(i, 13) * 16, 4)}%`
+      : `${fixed(82 + unit(i, 13) * 14, 4)}%`,
     "--dx": `${drift.toFixed(1)}cqw`,
     "--ox": `${Math.round(-90 + unit(i, 14) * 180)}px`,
     "--oy": `${Math.round(-110 + unit(i, 15) * 220)}px`,

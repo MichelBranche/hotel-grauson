@@ -1,8 +1,7 @@
 /**
  * Festive overlays, on top of the seasonal dressing in `lib/seasons.ts`.
- *
- * An effect is a named bundle of decorations, so the demo switcher stays a list
- * of buttons and the final version can trigger one from the calendar instead.
+ * The public site does not expose a control for these; they stay off until a
+ * calendar trigger sets one.
  */
 
 export type Effect = "natale";

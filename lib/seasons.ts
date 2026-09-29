@@ -1,34 +1,39 @@
 /**
- * Seasonal dressing for the site.
+ * Seasonal dressing for the public site. Europe/Rome local date.
  *
- * Four photographs change with the calendar — the home hero, the Cogne card,
- * the Gimillan facade (Cogne hero, balcony) and the footer horizon — plus the
- * accent colour of the call-to-action buttons, which lives in `globals.css`
- * under `[data-season]`.
+ * Photographic sets exist for estate, autunno and inverno only. Primavera is a
+ * real calendar season and falls back to the estate photographs.
+ * TODO: missing primavera assets — hero, cogne, facciata, footer.
+ * Fallback order when a set is missing: estate → autunno → inverno.
  *
- * The season is resolved from the date on the server (see `seasonForDate`), so
- * the switch happens on its own. The floating switcher is a demo affordance on
- * top of that: it overrides the resolved value for the current visit only.
+ * Ranges (no other month logic should exist):
+ * - inverno: 1 Dec – 31 Mar
+ * - primavera: 1 Apr – 31 May
+ * - estate: 1 Jun – 15 Sep
+ * - autunno: 16 Sep – 30 Nov
+ *
+ * QA only, never a visible control:
+ * - `?season=inverno|primavera|estate|autunno` on a page URL
+ * - `NEXT_PUBLIC_FORCE_SEASON` with the same keys (leave unset in production)
+ * The query wins over the env var. Both are applied in `resolveSeason` / the
+ * season provider; components only read the resolved season.
  */
 
-export type Season = "estate" | "autunno" | "inverno";
+export type Season = "inverno" | "primavera" | "estate" | "autunno";
+
+/** Seasons that have photographs in /public/images. */
+export type SeasonPhotos = "estate" | "autunno" | "inverno";
 
 export type SeasonSlot = "hero" | "cogne" | "facciata" | "footer";
 
 type SeasonDefinition = {
-  /** Long form, for the switcher's accessible name. */
-  label: string;
-  /** Short form, for the switcher's visible label. */
-  short: string;
   media: Record<SeasonSlot, { src: string; alt: string }>;
 };
 
-export const seasonOrder: Season[] = ["estate", "autunno", "inverno"];
+const ROME = "Europe/Rome";
 
-export const seasons: Record<Season, SeasonDefinition> = {
+export const seasons: Record<SeasonPhotos, SeasonDefinition> = {
   estate: {
-    label: "Primavera e estate",
-    short: "Estate",
     media: {
       hero: {
         src: "/images/hero-estate.jpg",
@@ -46,8 +51,6 @@ export const seasons: Record<Season, SeasonDefinition> = {
     },
   },
   autunno: {
-    label: "Autunno",
-    short: "Autunno",
     media: {
       hero: {
         src: "/images/hero-autunno.jpg",
@@ -65,8 +68,6 @@ export const seasons: Record<Season, SeasonDefinition> = {
     },
   },
   inverno: {
-    label: "Inverno",
-    short: "Inverno",
     media: {
       hero: {
         src: "/images/hero-inverno.jpg",
@@ -85,18 +86,58 @@ export const seasons: Record<Season, SeasonDefinition> = {
   },
 };
 
-/**
- * Placeholder calendar, to be tuned with the owners: at 1.800 m the snow sits
- * well into spring, so winter runs long and there is no separate spring set.
- */
-export function seasonForDate(date: Date): Season {
-  const month = date.getMonth() + 1;
-  if (month === 12 || month <= 3) return "inverno";
-  if (month >= 10) return "autunno";
-  return "estate";
+const photoFallback: Record<Season, SeasonPhotos> = {
+  inverno: "inverno",
+  // TODO: missing primavera assets (hero, cogne, facciata, footer). Estate exists, so the chain stops there.
+  primavera: "estate",
+  estate: "estate",
+  autunno: "autunno",
+};
+
+/** Photograph set for a calendar season. Primavera uses the estate set. */
+export function photoSeason(season: Season): SeasonPhotos {
+  return photoFallback[season];
 }
 
-/** Photograph for a slot on a given date — used for Open Graph and first paint. */
+function romeMonthDay(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ROME,
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(date);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  return { month, day };
+}
+
+/** Active season for a calendar instant. Defaults to now, in Europe/Rome. */
+export function getActiveSeason(date = new Date()): Season {
+  const { month, day } = romeMonthDay(date);
+  if (month === 12 || month <= 3) return "inverno";
+  if (month <= 5) return "primavera";
+  if (month <= 8) return "estate";
+  if (month === 9 && day <= 15) return "estate";
+  return "autunno";
+}
+
+const seasonKeys: readonly Season[] = ["inverno", "primavera", "estate", "autunno"];
+
+/** Accepts a QA override key. Anything else is ignored. */
+export function parseSeasonOverride(value: string | null | undefined): Season | null {
+  if (!value) return null;
+  const key = value.trim().toLowerCase();
+  return seasonKeys.find((season) => season === key) ?? null;
+}
+
+/**
+ * Season for server render: env force, otherwise the Rome calendar.
+ * `?season=` is applied in the client provider so a static page can still be overridden.
+ */
+export function resolveSeason(date = new Date()): Season {
+  return parseSeasonOverride(process.env.NEXT_PUBLIC_FORCE_SEASON) ?? getActiveSeason(date);
+}
+
+/** Photograph for a slot on a given date — Open Graph, JSON-LD, and first paint. */
 export function seasonMedia(slot: SeasonSlot, date = new Date()) {
-  return seasons[seasonForDate(date)].media[slot];
+  return seasons[photoSeason(resolveSeason(date))].media[slot];
 }
