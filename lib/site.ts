@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { contactGooglePlace } from "@/lib/contact";
 import { hotel } from "@/lib/content";
 import { rooms } from "@/lib/rooms";
+import { seasonMedia } from "@/lib/seasons";
 
 export const siteUrl = "https://www.locandagrauson.it";
 export const siteName = hotel.name;
@@ -85,7 +86,7 @@ export function hotelJsonLd() {
     url: siteUrl,
     inLanguage: "it-IT",
     image: [
-      absUrl("/images/hero-estate.jpg"),
+      absUrl(seasonMedia("hero").src),
       absUrl("/images/camera-locanda.jpg"),
       absUrl("/images/sala-ristorante.jpg"),
     ],

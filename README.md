@@ -12,7 +12,7 @@ Sito pubblico della [Locanda Grauson](https://www.locandagrauson.it) (Gimillan d
 
 - Home, camere (elenco + scheda), ristorante, Cogne, contatti, privacy
 - Hero cinematografici, transizioni di pagina, scroll Lenis, GSAP / ScrollTrigger
-- Stagioni (estate, autunno, inverno) e demo effetti Natalizi: fotografia e accenti cambiano senza ricaricare
+- Stagioni dal calendario di Roma (inverno, primavera, estate, autunno): fotografia e accenti seguono la data, senza un selettore in pagina
 - Motore di prenotazione su `/booking`, stesso database del PMS
 - SEO: metadata, sitemap, robots, Open Graph, JSON-LD Hotel / WebSite
 - Immagini AVIF/WebP via `next/image`, font locali (Sora) e `next/font`

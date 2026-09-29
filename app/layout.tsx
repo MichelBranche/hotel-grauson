@@ -9,7 +9,7 @@ import { EffectsProvider } from "@/components/providers/EffectsProvider";
 import { SeasonProvider } from "@/components/providers/SeasonProvider";
 import { SmoothScroll } from "@/components/providers/SmoothScroll";
 import { hotelJsonLd, siteDescription, siteName, siteUrl, websiteJsonLd } from "@/lib/site";
-import { seasonForDate } from "@/lib/seasons";
+import { photoSeason, resolveSeason } from "@/lib/seasons";
 import "./globals.css";
 
 const geist = Geist({
@@ -111,14 +111,14 @@ const motionFlag = `try{var r=window.matchMedia("(prefers-reduced-motion: reduce
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const season = seasonForDate(new Date());
+  const season = resolveSeason();
 
   return (
     // suppressHydrationWarning: the head script adds `has-motion` to <html>
     // before React hydrates.
     <html
       lang="it"
-      data-season={season}
+      data-season={photoSeason(season)}
       className={`${geist.variable} ${instrumentSerif.variable} ${caveat.variable} ${sora.variable}`}
       suppressHydrationWarning
     >
