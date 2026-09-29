@@ -1,11 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { rateLimit } from "@pms-core/auth/rate-limit";
 import { wrapAction } from "@pms-core/actions/result";
 import { createReservation, defaultPropertyId, getAvailabilityDetailed } from "@pms-core/integrations/booking-engine";
+import { DomainError } from "@pms-core/lib/errors";
 
 const searchSchema = z.object({
   checkIn: z.string().min(10),
@@ -24,6 +27,28 @@ export async function publicAvailabilityAction(input: z.infer<typeof searchSchem
   });
 }
 
+const guestSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string(),
+  phone: z.string().optional(),
+  country: z.string().optional(),
+});
+
+function guestDetails(guest: z.infer<typeof guestSchema>) {
+  const firstName = guest.firstName.trim();
+  const lastName = guest.lastName.trim();
+  const email = guest.email.trim();
+  const phone = guest.phone?.trim() || undefined;
+  if (!firstName || !lastName || !email) {
+    throw new DomainError("Inserisci nome, cognome ed email.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new DomainError("Inserisci un'email valida.");
+  }
+  return { ...guest, firstName, lastName, email, phone };
+}
+
 export async function publicCreateReservationAction(input: {
   roomId: string;
   checkIn: string;
@@ -40,7 +65,21 @@ export async function publicCreateReservationAction(input: {
     const limited = rateLimit(`booking:${ip}`, 12, 60 * 60 * 1000);
     if (!limited.ok) throw new Error("Troppe prenotazioni da questo indirizzo. Riprova più tardi.");
     const propertyId = await defaultPropertyId();
-    const reservation = await createReservation({ ...input, propertyId });
-    return { id: reservation?.id, code: reservation?.code };
+    const reservation = await createReservation({
+      ...input,
+      propertyId,
+      guest: guestDetails(guestSchema.parse(input.guest)),
+    });
+    if (!reservation?.id || !reservation.code) {
+      throw new DomainError("La richiesta non è stata registrata. Riprovate o chiamate la locanda.");
+    }
+    try {
+      after(() => {
+        revalidatePath("/pms", "layout");
+      });
+    } catch (error) {
+      console.error("Revalidate skipped after a public booking.", error);
+    }
+    return { id: reservation.id, code: reservation.code, status: reservation.status };
   });
 }

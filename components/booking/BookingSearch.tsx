@@ -142,6 +142,7 @@ export function BookingSearch({
           <button
             type="submit"
             disabled={pending}
+            aria-busy={pending || undefined}
             className="arrow-parent group flex h-[3.125rem] w-full items-center justify-center gap-2.5 rounded-full bg-accent px-6 text-[0.8125rem] font-medium text-surface shadow-[0_14px_30px_-20px_rgb(38_50_41_/_0.9)] transition-colors duration-500 [transition-timing-function:var(--ease-out)] hover:bg-accent-hover disabled:opacity-60"
           >
             {pending ? "Cerchiamo…" : "Verifica disponibilità"}

@@ -11,18 +11,31 @@ import { formatRange, nightsBetween } from "@pms-core/lib/dates";
 import { formatMoney } from "@pms-core/lib/money";
 import type { AvailabilityOffer } from "@pms-core/types";
 
+const MISSING_GUEST = "Inserisci nome, cognome ed email.";
+
+function guestMessage(guest: { firstName: string; lastName: string; email: string }) {
+  const firstName = guest.firstName.trim();
+  const lastName = guest.lastName.trim();
+  const email = guest.email.trim();
+  if (!firstName || !lastName || !email) return MISSING_GUEST;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Inserisci un'email valida.";
+  return null;
+}
+
 export function BookingFlow({
   checkIn: initialIn = "",
   checkOut: initialOut = "",
   adults: initialAdults = 2,
   initialOffers = [],
   initialNotices = [],
+  initialError = null,
 }: {
   checkIn?: string;
   checkOut?: string;
   adults?: number;
   initialOffers?: AvailabilityOffer[];
   initialNotices?: string[];
+  initialError?: string | null;
 }) {
   const [checkIn, setCheckIn] = useState(initialIn);
   const [checkOut, setCheckOut] = useState(initialOut);
@@ -33,7 +46,7 @@ export function BookingFlow({
   const [roomTypeId, setRoomTypeId] = useState(initialOffers[0]?.roomTypeId ?? "");
   const [ratePlanId, setRatePlanId] = useState(preferRate(initialOffers[0]?.ratePlans ?? [])?.id ?? "");
   const [guest, setGuest] = useState({ firstName: "", lastName: "", email: "", phone: "" });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [code, setCode] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
@@ -50,24 +63,32 @@ export function BookingFlow({
     setError(null);
     setCode(null);
     setSearching(true);
-    const result = await publicAvailabilityAction({ checkIn, checkOut, adults });
-    setSearching(false);
-    setSearched(true);
-    if (!result.ok) {
+    try {
+      const result = await publicAvailabilityAction({ checkIn, checkOut, adults });
+      setSearched(true);
+      if (!result.ok) {
+        setOffers([]);
+        setNotices([]);
+        setRoomTypeId("");
+        setRatePlanId("");
+        setError(result.error);
+        return;
+      }
+      setOffers(result.data.offers);
+      setNotices(result.data.notices);
+      const first = result.data.offers[0];
+      const preferred = first ? preferRate(first.ratePlans) : undefined;
+      setRoomTypeId(first?.roomTypeId ?? "");
+      setRatePlanId(preferred?.id ?? "");
+      document.getElementById("disponibilita")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {
+      setSearched(true);
       setOffers([]);
       setNotices([]);
-      setRoomTypeId("");
-      setRatePlanId("");
-      setError(result.error);
-      return;
+      setError("Non riusciamo a verificare la disponibilità. Riprovate.");
+    } finally {
+      setSearching(false);
     }
-    setOffers(result.data.offers);
-    setNotices(result.data.notices);
-    const first = result.data.offers[0];
-    const preferred = first ? preferRate(first.ratePlans) : undefined;
-    setRoomTypeId(first?.roomTypeId ?? "");
-    setRatePlanId(preferred?.id ?? "");
-    document.getElementById("disponibilita")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   if (code) {
@@ -76,8 +97,8 @@ export function BookingFlow({
         <p className="eyebrow text-muted">Richiesta inviata</p>
         <h2 className="display-lg mt-4 max-w-[16ch]">Vi aspettiamo a Gimillan</h2>
         <p className="lede mt-5 max-w-[36ch]">
-          Codice {code}. Vi confermiamo a {guest.email || "questa email"}.
-          {checkIn && checkOut ? ` ${formatRange(checkIn, checkOut)}.` : ""}
+          Codice {code}
+          {checkIn && checkOut ? `. ${formatRange(checkIn, checkOut)}` : ""}. La reception conferma il soggiorno. Il pagamento si fa in locanda.
         </p>
         <p className="mt-8 text-[0.875rem] text-muted">
           Per qualsiasi cosa, {hotel.phone} · {hotel.email}
@@ -116,7 +137,7 @@ export function BookingFlow({
       </p>
 
       <div id="disponibilita" className="scroll-mt-28">
-        {error ? (
+        {error && offers.length === 0 ? (
           <p role="alert" className="rounded-[var(--radius-card)] bg-[rgb(138_59_59_/_0.08)] px-5 py-4 text-[0.875rem] text-[#8a3b3b]">
             {error}
           </p>
@@ -165,8 +186,14 @@ export function BookingFlow({
             {selected && rate && catalog ? (
               <form
                 className="rounded-[var(--radius-panel)] border border-[rgb(37_39_33_/_0.06)] bg-surface p-5 shadow-[var(--shadow-soft)] sm:p-7"
+                noValidate
                 onSubmit={async (event) => {
                   event.preventDefault();
+                  const message = guestMessage(guest);
+                  if (message) {
+                    setError(message);
+                    return;
+                  }
                   const roomId = selected.availableRooms[0]?.id;
                   if (!roomId) {
                     setError("Questa tipologia non ha più camere su quelle date.");
@@ -174,20 +201,31 @@ export function BookingFlow({
                   }
                   setSending(true);
                   setError(null);
-                  const result = await publicCreateReservationAction({
-                    roomId,
-                    checkIn,
-                    checkOut,
-                    adults,
-                    ratePlanId,
-                    guest,
-                  });
-                  setSending(false);
-                  if (!result.ok) {
-                    setError(result.error);
-                    return;
+                  try {
+                    const result = await publicCreateReservationAction({
+                      roomId,
+                      checkIn,
+                      checkOut,
+                      adults,
+                      ratePlanId,
+                      guest: {
+                        ...guest,
+                        firstName: guest.firstName.trim(),
+                        lastName: guest.lastName.trim(),
+                        email: guest.email.trim(),
+                        phone: guest.phone.trim(),
+                      },
+                    });
+                    if (!result.ok) {
+                      setError(result.error);
+                      return;
+                    }
+                    setCode(result.data.code);
+                  } catch {
+                    setError("La richiesta non è partita. Riprovate.");
+                  } finally {
+                    setSending(false);
                   }
-                  setCode(result.data.code ?? "");
                 }}
               >
                 <p className="eyebrow text-muted">I vostri recapiti</p>
@@ -198,9 +236,10 @@ export function BookingFlow({
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   <label className="text-[0.75rem] text-muted">
-                    Nome
+                    Nome *
                     <input
                       required
+                      aria-required="true"
                       autoComplete="given-name"
                       value={guest.firstName}
                       onChange={(event) => setGuest({ ...guest, firstName: event.target.value })}
@@ -208,9 +247,10 @@ export function BookingFlow({
                     />
                   </label>
                   <label className="text-[0.75rem] text-muted">
-                    Cognome
+                    Cognome *
                     <input
                       required
+                      aria-required="true"
                       autoComplete="family-name"
                       value={guest.lastName}
                       onChange={(event) => setGuest({ ...guest, lastName: event.target.value })}
@@ -218,9 +258,10 @@ export function BookingFlow({
                     />
                   </label>
                   <label className="text-[0.75rem] text-muted">
-                    Email
+                    Email *
                     <input
                       required
+                      aria-required="true"
                       type="email"
                       autoComplete="email"
                       value={guest.email}
@@ -240,9 +281,16 @@ export function BookingFlow({
                   </label>
                 </div>
 
+                {error ? (
+                  <p role="alert" className="mt-6 rounded-[var(--radius-card)] bg-[rgb(138_59_59_/_0.08)] px-5 py-4 text-[0.875rem] text-[#8a3b3b]">
+                    {error}
+                  </p>
+                ) : null}
+
                 <button
                   type="submit"
                   disabled={sending}
+                  aria-busy={sending || undefined}
                   className="mt-7 h-[3.125rem] rounded-full bg-accent px-7 text-[0.8125rem] font-medium text-surface transition-colors duration-500 hover:bg-accent-hover disabled:opacity-60"
                 >
                   {sending ? "Invio…" : "Invia la richiesta"}
