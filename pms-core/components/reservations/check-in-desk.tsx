@@ -3,16 +3,19 @@
 import { useEffect, useState } from "react";
 
 import { checkInReservationAction, loadCheckInDeskAction } from "@pms-core/actions/reservations";
+import { PlaceField } from "@pms-core/components/reservations/place-field";
 import { Button } from "@pms-core/components/ui/button";
 import { Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select } from "@pms-core/components/ui/input";
 import {
   DOCUMENT_TYPES,
   SEX_OPTIONS,
-  checkInCompanionBlank,
   checkInGuestComplete,
+  companionGuestComplete,
   documentLast4,
   documentTypeLabel,
+  expiryRequired,
+  isItalyResidence,
   maskedDocument,
   type CheckInGuestFields,
 } from "@pms-core/lib/check-in-guest";
@@ -200,8 +203,10 @@ export function CheckInDesk({
 
   const partySize = (stay?.adults ?? 1) + (stay?.children ?? 0);
   const companionLimit = Math.max(0, partySize - 1);
-  const entered = companions.filter((guest) => !checkInCompanionBlank(asFields(guest)));
-  const guestsReady = checkInGuestComplete(asFields(primary)) && entered.every((guest) => checkInGuestComplete(asFields(guest)));
+  const guestsReady =
+    checkInGuestComplete(asFields(primary)) &&
+    companions.length === companionLimit &&
+    companions.every((guest) => companionGuestComplete(asFields(guest)));
   const blocked = stay?.blocked ?? null;
   const stepReady = step === 0 ? Boolean(stay) && !blocked && !loadError : guestsReady && !blocked;
 
@@ -218,7 +223,7 @@ export function CheckInDesk({
     setPending(true);
     const result = await checkInReservationAction(reservationId, {
       primary: asFields(primary),
-      companions: entered.map(asFields),
+      companions: companions.map(asFields),
     });
     setPending(false);
     await onCompleted(result);
@@ -291,40 +296,20 @@ export function CheckInDesk({
         {stay && step === 1 ? (
           <div className="grid gap-5">
             <p className="text-sm text-[var(--pms-muted)]">
-              Composizione della camera: {partySize} {partySize === 1 ? "persona" : "persone"}. Il capogruppo è obbligatorio. Compila gli altri ospiti presenti. Telefono ed email sono facoltativi. Per la residenza in Italia servono anche CAP e provincia.
+              Composizione della camera: {partySize} {partySize === 1 ? "persona" : "persone"}. Il capogruppo richiede anagrafica, residenza e documento. Per ogni altro ospite bastano nome, cognome, sesso e residenza. Telefono ed email sono facoltativi. Se la residenza è in Italia servono anche CAP e provincia.
             </p>
-            <GuestCard title="Capogruppo" role="Capogruppo" draft={primary} revealed={Boolean(revealed[primary.key])} onReveal={() => setRevealed((current) => ({ ...current, [primary.key]: !current[primary.key] }))} onChange={patchPrimary} />
-            {companions.map((companion, index) => {
-              const started = !checkInCompanionBlank(asFields(companion));
-              return (
-                <div key={companion.key} className="grid gap-3">
-                  {started || companion.id ? (
-                    <div className="flex justify-end">
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setCompanions((current) => current.filter((item) => item.key !== companion.key))}>
-                        Rimuovi ospite
-                      </Button>
-                    </div>
-                  ) : null}
-                  <GuestCard
-                    title={`Ospite ${index + 2}`}
-                    role="Ospite"
-                    draft={companion}
-                    revealed={Boolean(revealed[companion.key])}
-                    onReveal={() => setRevealed((current) => ({ ...current, [companion.key]: !current[companion.key] }))}
-                    onChange={(patch) => patchCompanion(companion.key, patch)}
-                  />
-                </div>
-              );
-            })}
-            {companions.length < companionLimit ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCompanions((current) => [...current, emptyDraft(`slot-${current.length + 1}-${Date.now()}`)])}
-              >
-                Aggiungi ospite
-              </Button>
-            ) : null}
+            <GuestCard strict title="Capogruppo" role="Capogruppo" draft={primary} revealed={Boolean(revealed[primary.key])} onReveal={() => setRevealed((current) => ({ ...current, [primary.key]: !current[primary.key] }))} onChange={patchPrimary} />
+            {companions.map((companion, index) => (
+              <GuestCard
+                key={companion.key}
+                title={`Ospite ${index + 2}`}
+                role="Ospite"
+                draft={companion}
+                revealed={Boolean(revealed[companion.key])}
+                onReveal={() => setRevealed((current) => ({ ...current, [companion.key]: !current[companion.key] }))}
+                onChange={(patch) => patchCompanion(companion.key, patch)}
+              />
+            ))}
           </div>
         ) : null}
 
@@ -334,7 +319,7 @@ export function CheckInDesk({
               {stay.code} · camera {stay.roomNumber}. La camera risulterà occupata.
             </p>
             <ul className="grid gap-3">
-              {[primary, ...entered].map((guest) => (
+              {[primary, ...companions].map((guest) => (
                 <li key={guest.key} className="rounded-2xl bg-white/70 px-4 py-3">
                   <p>
                     {guest.lastName} {guest.firstName}
@@ -386,6 +371,7 @@ function GuestCard({
   revealed,
   onReveal,
   onChange,
+  strict = false,
 }: {
   title: string;
   role: string;
@@ -393,7 +379,11 @@ function GuestCard({
   revealed: boolean;
   onReveal: () => void;
   onChange: (patch: Partial<Draft>) => void;
+  strict?: boolean;
 }) {
+  const italy = isItalyResidence(draft.residenceCountry);
+  const expiry = strict && expiryRequired(draft.documentType);
+  const optional = (text: string, required: boolean) => (required ? text : `${text} (facoltativo)`);
   return (
     <section className="grid gap-4 rounded-2xl border border-[var(--pms-line)] p-4">
       <div>
@@ -417,14 +407,14 @@ function GuestCard({
             ))}
           </Select>
         </Field>
-        <Field label="Data di nascita">
-          <Input type="date" autoComplete="off" value={draft.dateOfBirth} onChange={(event) => onChange({ dateOfBirth: event.target.value })} required />
+        <Field label={optional("Data di nascita", strict)}>
+          <Input type="date" autoComplete="off" value={draft.dateOfBirth} onChange={(event) => onChange({ dateOfBirth: event.target.value })} required={strict} />
         </Field>
-        <Field label="Luogo di nascita">
-          <Input value={draft.birthPlace} autoComplete="off" onChange={(event) => onChange({ birthPlace: event.target.value })} required />
+        <Field label={optional("Luogo di nascita", strict)}>
+          <PlaceField kind="birthplace" value={draft.birthPlace} required={strict} onValueChange={(birthPlace) => onChange({ birthPlace })} />
         </Field>
-        <Field label="Cittadinanza">
-          <Input value={draft.citizenship} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ citizenship: event.target.value })} required />
+        <Field label={optional("Cittadinanza", strict)}>
+          <PlaceField kind="country" value={draft.citizenship} required={strict} placeholder="Es. Italia" onValueChange={(citizenship) => onChange({ citizenship })} />
         </Field>
         <Field label="Telefono (facoltativo)">
           <Input value={draft.phone} autoComplete="off" onChange={(event) => onChange({ phone: event.target.value })} />
@@ -438,23 +428,34 @@ function GuestCard({
         <Field label="Indirizzo">
           <Input value={draft.residenceAddress} autoComplete="off" onChange={(event) => onChange({ residenceAddress: event.target.value })} required />
         </Field>
-        <Field label="CAP">
-          <Input value={draft.residencePostalCode} autoComplete="off" onChange={(event) => onChange({ residencePostalCode: event.target.value })} />
+        <Field label={optional("CAP", italy)}>
+          <Input value={draft.residencePostalCode} autoComplete="off" onChange={(event) => onChange({ residencePostalCode: event.target.value })} required={italy} />
         </Field>
         <Field label="Comune">
-          <Input value={draft.residenceCity} autoComplete="off" onChange={(event) => onChange({ residenceCity: event.target.value })} required />
+          <PlaceField
+            kind="comune"
+            value={draft.residenceCity}
+            required
+            onValueChange={(residenceCity, extra) =>
+              onChange({
+                residenceCity,
+                ...(extra?.province ? { residenceProvince: extra.province } : {}),
+                ...(extra?.cap ? { residencePostalCode: extra.cap } : {}),
+              })
+            }
+          />
         </Field>
-        <Field label="Provincia">
-          <Input value={draft.residenceProvince} autoComplete="off" onChange={(event) => onChange({ residenceProvince: event.target.value })} />
+        <Field label={optional("Provincia", italy)}>
+          <PlaceField kind="province" value={draft.residenceProvince} required={italy} onValueChange={(residenceProvince) => onChange({ residenceProvince })} />
         </Field>
         <Field label="Paese di residenza">
-          <Input value={draft.residenceCountry} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ residenceCountry: event.target.value })} required />
+          <PlaceField kind="country" value={draft.residenceCountry} required placeholder="Es. Italia" onValueChange={(residenceCountry) => onChange({ residenceCountry })} />
         </Field>
       </div>
       <p className="text-xs text-[var(--pms-muted)]">Documento</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Tipo documento">
-          <Select value={draft.documentType} onChange={(event) => onChange({ documentType: event.target.value })} required>
+        <Field label={optional("Tipo documento", strict)}>
+          <Select value={draft.documentType} onChange={(event) => onChange({ documentType: event.target.value })} required={strict}>
             <option value="">Seleziona</option>
             {DOCUMENT_TYPES.map((item) => (
               <option key={item.value} value={item.value}>
@@ -463,7 +464,7 @@ function GuestCard({
             ))}
           </Select>
         </Field>
-        <Field label="Numero documento">
+        <Field label={optional("Numero documento", strict)}>
           <div className="flex gap-2">
             <Input
               className="min-w-0"
@@ -472,24 +473,24 @@ function GuestCard({
               spellCheck={false}
               value={draft.documentNumber}
               onChange={(event) => onChange({ documentNumber: event.target.value })}
-              required
+              required={strict}
             />
             <Button type="button" variant="outline" size="sm" aria-pressed={revealed} onClick={onReveal}>
               {revealed ? "Nascondi" : "Mostra"}
             </Button>
           </div>
         </Field>
-        <Field label="Ente di rilascio">
-          <Input value={draft.documentAuthority} autoComplete="off" onChange={(event) => onChange({ documentAuthority: event.target.value })} required />
+        <Field label={optional("Ente di rilascio", strict)}>
+          <Input value={draft.documentAuthority} autoComplete="off" onChange={(event) => onChange({ documentAuthority: event.target.value })} required={strict} />
         </Field>
-        <Field label="Paese di emissione">
-          <Input value={draft.documentCountry} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ documentCountry: event.target.value })} required />
+        <Field label={optional("Paese di emissione", strict)}>
+          <PlaceField kind="country" value={draft.documentCountry} required={strict} placeholder="Es. Italia" onValueChange={(documentCountry) => onChange({ documentCountry })} />
         </Field>
-        <Field label="Data di emissione">
-          <Input type="date" autoComplete="off" value={draft.documentIssuedOn} onChange={(event) => onChange({ documentIssuedOn: event.target.value })} required />
+        <Field label={optional("Data di emissione", strict)}>
+          <Input type="date" autoComplete="off" value={draft.documentIssuedOn} onChange={(event) => onChange({ documentIssuedOn: event.target.value })} required={strict} />
         </Field>
-        <Field label="Data di scadenza">
-          <Input type="date" autoComplete="off" value={draft.documentExpiresOn} onChange={(event) => onChange({ documentExpiresOn: event.target.value })} />
+        <Field label={optional("Data di scadenza", expiry)}>
+          <Input type="date" autoComplete="off" value={draft.documentExpiresOn} onChange={(event) => onChange({ documentExpiresOn: event.target.value })} required={expiry} />
         </Field>
       </div>
     </section>

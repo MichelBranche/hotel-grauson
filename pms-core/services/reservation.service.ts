@@ -607,7 +607,9 @@ export const reservationService = {
           data: { reservationId: current.id, guestId: current.guestId, isPrimary: true, role: "LEADER" },
         });
       }
-      await auditGuestDocument(tx, current.propertyId, actor.id, current.guestId, parsed.primary.documentType, parsed.primary.documentNumber);
+      if (parsed.primary.documentNumber) {
+        await auditGuestDocument(tx, current.propertyId, actor.id, current.guestId, parsed.primary.documentType, parsed.primary.documentNumber);
+      }
       next.push(summaryOf(current.guestId, parsed.primary, true));
       const keep = new Set<string>();
       for (const companion of parsed.companions) {
@@ -618,7 +620,9 @@ export const reservationService = {
             where: { reservationId: current.id, guestId: companion.id },
             data: { role: "GUEST", isPrimary: false },
           });
-          await auditGuestDocument(tx, current.propertyId, actor.id, companion.id, companion.documentType, companion.documentNumber);
+          if (companion.documentNumber) {
+            await auditGuestDocument(tx, current.propertyId, actor.id, companion.id, companion.documentType ?? "", companion.documentNumber);
+          }
           next.push(summaryOf(companion.id, companion, false));
           continue;
         }
@@ -628,7 +632,9 @@ export const reservationService = {
         await tx.reservationGuest.create({
           data: { reservationId: current.id, guestId: created.id, isPrimary: false, role: "GUEST" },
         });
-        await auditGuestDocument(tx, current.propertyId, actor.id, created.id, companion.documentType, companion.documentNumber);
+        if (companion.documentNumber) {
+          await auditGuestDocument(tx, current.propertyId, actor.id, created.id, companion.documentType ?? "", companion.documentNumber);
+        }
         next.push(summaryOf(created.id, companion, false));
       }
       const removed = current.guests.filter((link) => link.guestId !== current.guestId && !keep.has(link.guestId));
@@ -666,6 +672,8 @@ export const reservationService = {
         code: true,
         total: true,
         nights: true,
+        adults: true,
+        children: true,
         checkIn: true,
         checkOut: true,
         guest: { select: checkInGuestSelect },
@@ -698,7 +706,8 @@ export const reservationService = {
         throw new DomainError("Completa i dati dell'ospite principale prima del check-in.");
       }
       const companions = current.guests.filter((link) => !link.isPrimary && link.guest.id !== current.guest.id);
-      if (companions.some((link) => !companionGuestComplete(link.guest))) {
+      const expectedCompanions = Math.max(0, current.adults + current.children - 1);
+      if (companions.length < expectedCompanions || companions.some((link) => !companionGuestComplete(link.guest))) {
         throw new DomainError("Completa i dati degli altri ospiti prima del check-in.");
       }
     }
@@ -988,9 +997,9 @@ function guestDocumentData(guest: {
   firstName: string;
   lastName: string;
   sex: string;
-  dateOfBirth: string;
-  birthPlace: string;
-  citizenship: string;
+  dateOfBirth: string | null;
+  birthPlace: string | null;
+  citizenship: string | null;
   email: string | null;
   phone: string | null;
   residenceAddress: string;
@@ -998,18 +1007,18 @@ function guestDocumentData(guest: {
   residenceCity: string;
   residenceProvince: string | null;
   residenceCountry: string;
-  documentType: string;
-  documentNumber: string;
-  documentAuthority: string;
-  documentIssuedOn: string;
-  documentCountry: string;
+  documentType: string | null;
+  documentNumber: string | null;
+  documentAuthority: string | null;
+  documentIssuedOn: string | null;
+  documentCountry: string | null;
   documentExpiresOn: string | null;
 }) {
   return {
     firstName: guest.firstName,
     lastName: guest.lastName,
     sex: guest.sex,
-    dateOfBirth: toDate(guest.dateOfBirth),
+    dateOfBirth: guest.dateOfBirth ? toDate(guest.dateOfBirth) : null,
     birthPlace: guest.birthPlace,
     citizenship: guest.citizenship,
     country: guest.citizenship,
@@ -1023,7 +1032,7 @@ function guestDocumentData(guest: {
     documentType: guest.documentType,
     documentNumber: guest.documentNumber,
     documentAuthority: guest.documentAuthority,
-    documentIssuedOn: toDate(guest.documentIssuedOn),
+    documentIssuedOn: guest.documentIssuedOn ? toDate(guest.documentIssuedOn) : null,
     documentCountry: guest.documentCountry,
     documentExpiresOn: guest.documentExpiresOn ? toDate(guest.documentExpiresOn) : null,
   };
@@ -1031,7 +1040,7 @@ function guestDocumentData(guest: {
 
 function summaryOf(
   id: string,
-  guest: { firstName: string; lastName: string; documentType: string; documentNumber: string },
+  guest: { firstName: string; lastName: string; documentType: string | null; documentNumber: string | null },
   isPrimary: boolean,
 ): StayGuestSummary {
   return {
