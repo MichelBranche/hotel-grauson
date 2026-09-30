@@ -3,24 +3,27 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import { parseSseBlock, type LiveTopic } from "@pms-core/realtime/protocol";
+import { installRscFlightTracker, whenRscIdle } from "@pms-core/lib/rsc-flight";
+import { parseSseBlock, type LiveClientDetail, type LiveTopic } from "@pms-core/realtime/protocol";
 
 const RETRY_MS = 2_000;
 
 /**
- * Authenticated live stream for the open PMS session. Reservation events refresh
- * the current server view and tell Planning to reload the visible board. Notification
- * events refresh the bell, which is what plays the web-request chime.
+ * Authenticated live stream for the open PMS session. Reservation events reload
+ * the visible Planning board, then refresh the server tree (KPIs, lists, bell).
+ * The refresh waits until that reload — and any in-flight server action — has
+ * finished, so the two RSC payloads are not applied together.
  */
-export function PmsLive({ onActivity }: { onActivity: () => void }) {
+export function PmsLive() {
   const router = useRouter();
-  const onActivityRef = useRef(onActivity);
+  const routerRef = useRef(router);
 
   useEffect(() => {
-    onActivityRef.current = onActivity;
-  }, [onActivity]);
+    routerRef.current = router;
+  }, [router]);
 
   useEffect(() => {
+    installRscFlightTracker();
     const abort = new AbortController();
     let stopped = false;
     let lastId: string | null = null;
@@ -30,11 +33,23 @@ export function PmsLive({ onActivity }: { onActivity: () => void }) {
     const flush = () => {
       const reservation = sawReservation;
       sawReservation = false;
-      if (reservation) {
-        window.dispatchEvent(new CustomEvent("pms:live", { detail: { topic: "reservation" satisfies LiveTopic } }));
-      }
-      router.refresh();
-      onActivityRef.current();
+      whenRscIdle(() => {
+        const tracked: Promise<unknown>[] = [];
+        if (reservation) {
+          const detail: LiveClientDetail = {
+            topic: "reservation",
+            track(work) {
+              tracked.push(work);
+            },
+          };
+          window.dispatchEvent(new CustomEvent("pms:live", { detail }));
+        }
+        void Promise.all(tracked).finally(() => {
+          whenRscIdle(() => {
+            routerRef.current.refresh();
+          });
+        });
+      });
     };
 
     const schedule = (topic: LiveTopic) => {
@@ -84,7 +99,7 @@ export function PmsLive({ onActivity }: { onActivity: () => void }) {
       abort.abort();
       window.clearTimeout(timer);
     };
-  }, [router]);
+  }, []);
 
   return null;
 }

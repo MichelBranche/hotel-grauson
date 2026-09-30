@@ -26,6 +26,13 @@ export function addDaysISO(iso: string, amount: number): string {
   return toISODate(date);
 }
 
+/** Monday of the ISO week that contains this calendar date. */
+export function startOfIsoWeek(iso: string): string {
+  const day = toDate(iso).getUTCDay();
+  const delta = day === 0 ? -6 : 1 - day;
+  return addDaysISO(iso, delta);
+}
+
 export function nightsBetween(checkIn: string, checkOut: string): number {
   return Math.round((toDate(checkOut).getTime() - toDate(checkIn).getTime()) / 86_400_000);
 }

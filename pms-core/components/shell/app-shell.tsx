@@ -18,6 +18,10 @@ import {
 } from "@pms-core/lib/sidebar-pref";
 import type { SessionUser } from "@pms-core/types";
 
+function notificationKey(items: Note[], unread: number) {
+  return `${unread}\n${items.map((item) => `${item.id}\t${item.read ? 1 : 0}\t${item.title}\t${item.body}`).join("\n")}`;
+}
+
 type Note = {
   id: string;
   type?: string | null;
@@ -47,6 +51,16 @@ export function AppShell({
   const [notesOpen, setNotesOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
   const [unread, setUnread] = useState(initialUnread);
+  const noteKey = notificationKey(initialNotifications, initialUnread);
+  const [seenNoteKey, setSeenNoteKey] = useState(noteKey);
+  // Live refresh re-renders this shell from the server. Copy the new bell
+  // into state during render so we don't also call a server action beside
+  // router.refresh() (that pair surfaces as React #441).
+  if (seenNoteKey !== noteKey) {
+    setSeenNoteKey(noteKey);
+    setNotifications(initialNotifications);
+    setUnread(initialUnread);
+  }
   const pathname = usePathname();
   const [pending, setPending] = useState<{ href: string; from: string } | null>(null);
   // Pending only while we are still on the page the click came from; once the
@@ -110,7 +124,7 @@ export function AppShell({
           </div>
         </main>
       </div>
-      <PmsLive onActivity={() => void refreshNotes()} />
+      <PmsLive />
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
       <NotificationCenter
         open={notesOpen}

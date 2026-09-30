@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { loginAction } from "@pms-core/actions/auth";
@@ -8,8 +7,16 @@ import { branding } from "@pms-core/config/branding";
 import { Button } from "@pms-core/components/ui/button";
 import { Field, Input } from "@pms-core/components/ui/input";
 
+function redirectTarget(error: unknown) {
+  if (typeof error !== "object" || error === null || !("digest" in error)) return null;
+  const digest = String((error as { digest: unknown }).digest);
+  if (!digest.startsWith("NEXT_REDIRECT")) return null;
+  const target = digest.split(";")[2] ?? "";
+  if (!target.startsWith("/pms/") || target.startsWith("//") || target.includes("\\")) return "/pms/planning";
+  return target;
+}
+
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,14 +41,27 @@ export default function LoginPage() {
             event.preventDefault();
             setPending(true);
             setError(null);
-            const result = await loginAction({ email, password });
-            setPending(false);
-            if (!result.ok) {
-              setError(result.error);
-              return;
+            try {
+              const result = await loginAction({ email, password });
+              if (!result.ok) {
+                setPending(false);
+                setError(result.error);
+                return;
+              }
+              // The session cookie is already set. A soft router.push/refresh
+              // stays on this page: Next refreshes the current login route
+              // after cookies().set(), and that refresh wins over the push.
+              // A full navigation sends the cookie and lands in the PMS.
+              window.location.replace(result.data.redirectTo);
+            } catch (error) {
+              const target = redirectTarget(error);
+              if (target) {
+                window.location.replace(target);
+                return;
+              }
+              setPending(false);
+              setError("Accesso non riuscito. Riprova.");
             }
-            router.push(result.data.redirectTo);
-            router.refresh();
           }}
         >
           <p className="text-xs tracking-[0.22em] text-[var(--pms-muted)]">PROPERTY MANAGEMENT</p>
