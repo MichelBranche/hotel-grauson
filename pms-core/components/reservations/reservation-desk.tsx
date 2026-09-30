@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { updateReservationNotesAction } from "@pms-core/actions/reservations";
 import { MoveDialog } from "@pms-core/components/planning/move-dialog";
 import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
+import { MaskedDocument } from "@pms-core/components/reservations/masked-document";
 import { reportAction } from "@pms-core/components/ui/action-feedback";
 import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
@@ -66,6 +67,7 @@ export function ReservationDesk({
     email: reservation.email,
     phone: reservation.phone,
     country: reservation.country,
+    party: reservation.party,
     balance,
   });
   const signature = [
@@ -86,6 +88,7 @@ export function ReservationDesk({
     reservation.email ?? "",
     reservation.phone ?? "",
     reservation.country ?? "",
+    reservation.party.map((guest) => `${guest.id}:${guest.documentLast4 ?? ""}`).join(","),
     balance,
     reservation.notes,
   ].join("|");
@@ -111,6 +114,7 @@ export function ReservationDesk({
       email: reservation.email,
       phone: reservation.phone,
       country: reservation.country,
+      party: reservation.party,
       balance,
     });
   }
@@ -134,6 +138,7 @@ export function ReservationDesk({
               email: patch.email ?? null,
               phone: patch.phone ?? null,
               country: patch.country ?? null,
+              party: patch.party ?? current.party,
             }
           : {}),
       }));
@@ -171,6 +176,18 @@ export function ReservationDesk({
       <p>Email: {live.email ?? "—"}</p>
       <p>Telefono: {live.phone ?? "—"}</p>
       <p>Paese: {live.country ?? "Non indicato"}</p>
+      <ul className="grid gap-2">
+        {live.party.map((guest) => (
+          <li key={guest.id}>
+            {guest.isPrimary ? null : (
+              <span>
+                {guest.lastName} {guest.firstName} · altro ospite ·{" "}
+              </span>
+            )}
+            <MaskedDocument guestId={guest.id} documentType={guest.documentType} last4={guest.documentLast4} canReveal={permissions.canCheckIn} />
+          </li>
+        ))}
+      </ul>
       <div className="rounded-2xl bg-white/70 px-4 py-3">
         <p>Camera {formatMoneyExact(live.roomRate)}</p>
         <p>Extra {formatMoneyExact(live.extrasTotal)}</p>
@@ -189,13 +206,6 @@ export function ReservationDesk({
           checkIn: reservation.checkIn,
           checkOut: live.checkOut,
           balance: live.balance,
-        }}
-        guest={{
-          firstName: live.guestFirstName,
-          lastName: live.guestLastName,
-          email: live.email,
-          phone: live.phone,
-          country: live.country,
         }}
         extras={extras}
         permissions={permissions}

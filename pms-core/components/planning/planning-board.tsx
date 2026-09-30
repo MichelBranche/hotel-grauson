@@ -132,13 +132,6 @@ function Block({
               checkOut: reservation.checkOut,
               balance: reservation.total,
             }}
-            guest={{
-              firstName: reservation.guestFirstName,
-              lastName: reservation.guestLastName,
-              email: reservation.email,
-              phone: reservation.phone,
-              country: reservation.country,
-            }}
             extras={[]}
             permissions={permissions}
             businessToday={businessToday}
@@ -354,6 +347,7 @@ export function PlanningBoard({
                     email: patch.email !== undefined ? patch.email : item.email,
                     phone: patch.phone !== undefined ? patch.phone : item.phone,
                     country: patch.country !== undefined ? patch.country : item.country,
+                    party: patch.party ?? item.party,
                   }
                 : {}),
             }

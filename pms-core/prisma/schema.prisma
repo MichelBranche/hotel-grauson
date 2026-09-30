@@ -226,9 +226,13 @@ model Guest {
   email          String?
   phone          String?
   country        String?
-  documentType   String?
-  documentNumber String?
-  dateOfBirth    DateTime?
+  documentType      String?
+  documentNumber    String?
+  /// Issuing country. Kept on the guest for reception. Alloggiati export is out of scope.
+  documentCountry   String?
+  /// Expiry date, stored at UTC noon. Alloggiati export is out of scope.
+  documentExpiresOn DateTime?
+  dateOfBirth       DateTime?
   notes          String   @default("")
   preferences    String   @default("[]")
   vip            Boolean  @default(false)

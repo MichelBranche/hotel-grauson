@@ -11,6 +11,7 @@ import { todayInTimeZone, toISODate } from "@pms-core/lib/dates";
 import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
 import { optionExpiryLabel } from "@pms-core/lib/option-hold";
 import { roundMoney } from "@pms-core/lib/money";
+import { stayParty } from "@pms-core/lib/check-in-guest";
 import { guestDisplay, parseJson } from "@pms-core/lib/utils";
 import { auditService } from "@pms-core/services/audit.service";
 import { rateService } from "@pms-core/services/rate.service";
@@ -57,6 +58,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
     email: reservation.guest.email,
     phone: reservation.guest.phone,
     country: reservation.guest.country,
+    party: stayParty(reservation.guest, reservation.guests),
     adults: reservation.adults,
     children: reservation.children,
     checkIn: toISODate(reservation.checkIn),

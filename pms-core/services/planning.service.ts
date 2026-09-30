@@ -3,6 +3,7 @@ import { roomRepo } from "@pms-core/database/repositories/room.repo";
 import { prisma } from "@pms-core/database/client";
 import { planningStatuses } from "@pms-core/config/status";
 import { toDate, toISODate } from "@pms-core/lib/dates";
+import { stayParty } from "@pms-core/lib/check-in-guest";
 import { guestDisplay } from "@pms-core/lib/utils";
 import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
 import { planningColor } from "@pms-core/lib/planning-color";
@@ -55,6 +56,7 @@ export const planningService = {
           email: reservation.guest.email,
           phone: reservation.guest.phone,
           country: reservation.guest.country,
+          party: stayParty(reservation.guest, reservation.guests),
           adults: reservation.adults,
           children: reservation.children,
           checkIn: toISODate(reservation.checkIn),
