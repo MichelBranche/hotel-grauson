@@ -24,6 +24,7 @@ import { StatusBadge } from "@pms-core/components/ui/badge";
 import { Button } from "@pms-core/components/ui/button";
 import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { addDaysISO, eachISODate, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
+import type { LiveClientDetail } from "@pms-core/realtime/protocol";
 import { planningBarLabel, planningBarTitle } from "@pms-core/lib/planning-bar-label";
 import { planningColor } from "@pms-core/lib/planning-color";
 import { primaryDeskAction } from "@pms-core/lib/reservation-status";
@@ -43,7 +44,7 @@ export type PlanningBoardHandle = {
   focusStay: (id: string, checkIn?: string, status?: string) => void;
 };
 
-function planningAnchorForStay(checkIn: string, view: PlanningView = "twoweeks") {
+function planningAnchorForStay(checkIn: string, view: PlanningView = "week") {
   return addDaysISO(checkIn, -Math.floor(spans[view] / 2));
 }
 
@@ -199,7 +200,8 @@ export function PlanningBoard({
 }) {
   const router = useRouter();
   const [data, setData] = useState(initial);
-  const [view, setView] = useState<PlanningView>("twoweeks");
+  // Matches PlanningPage: a fresh board is the current week, not the 14-day zoom.
+  const [view, setView] = useState<PlanningView>("week");
   const [anchor, setAnchor] = useState(initial.from);
   const [selectedId, setSelectedId] = useState<string | null>(initialFocus?.id ?? initial.reservations[0]?.id ?? null);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -292,14 +294,17 @@ export function PlanningBoard({
 
   useEffect(() => {
     const onLive = (event: Event) => {
-      const topic = (event as CustomEvent<{ topic?: string }>).detail?.topic;
-      if (topic !== "reservation") return;
+      const detail = (event as CustomEvent<LiveClientDetail>).detail;
+      if (detail?.topic !== "reservation") return;
       const token = ++loadId.current;
       const seen = revision.current;
-      void getPlanningAction(from, to).then((result) => {
+      const work = getPlanningAction(from, to).then((result) => {
         if (token !== loadId.current || !result.ok || revision.current !== seen) return;
         setData(result.data);
       });
+      // The live stream refreshes the server tree after this promise, so the
+      // two RSC payloads are not applied at the same time.
+      detail.track?.(work);
     };
     window.addEventListener("pms:live", onLive);
     return () => window.removeEventListener("pms:live", onLive);

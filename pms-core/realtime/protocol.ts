@@ -8,6 +8,12 @@ export type LivePayload = {
   title: string | null;
 };
 
+/** Browser event detail for `pms:live`. `track` keeps a reload ahead of router.refresh. */
+export type LiveClientDetail = {
+  topic?: LiveTopic;
+  track?: (work: Promise<unknown>) => void;
+};
+
 export type LiveCursor = { createdAt: Date; id: string };
 
 /** How long one Hobby/Pro function holds the stream before the client reconnects. */
