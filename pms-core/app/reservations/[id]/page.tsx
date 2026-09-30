@@ -7,11 +7,11 @@ import { can, canForceCancel } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
 import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
-import { todayInTimeZone, toISODate } from "@pms-core/lib/dates";
+import { formatLong, todayInTimeZone, toISODate } from "@pms-core/lib/dates";
 import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
 import { optionExpiryLabel } from "@pms-core/lib/option-hold";
 import { roundMoney } from "@pms-core/lib/money";
-import { stayParty } from "@pms-core/lib/check-in-guest";
+import { documentLast4, knownDocumentType, roleLabel, sexLabel, stayParty } from "@pms-core/lib/check-in-guest";
 import { guestDisplay, parseJson } from "@pms-core/lib/utils";
 import { auditService } from "@pms-core/services/audit.service";
 import { rateService } from "@pms-core/services/rate.service";
@@ -105,6 +105,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
           businessToday={todayInTimeZone(timeZone)}
           expiresLabel={optionExpiryLabel({ status: reservation.status, createdAt: reservation.createdAt, timeZone })}
           balance={roundMoney(Math.max(0, reservation.total - paid))}
+          records={guestRecords(reservation.guest, reservation.guests)}
           permissions={{
             canWrite: can(session.role, "reservations.write"),
             canModify: can(session.role, "planning.move"),
@@ -135,4 +136,67 @@ export default async function ReservationDetailPage({ params }: { params: Promis
       </div>
     </div>
   );
+}
+
+function guestRecords(
+  primary: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    country: string | null;
+    citizenship: string | null;
+    sex: string | null;
+    dateOfBirth: Date | null;
+    birthPlace: string | null;
+    residenceAddress: string | null;
+    residencePostalCode: string | null;
+    residenceCity: string | null;
+    residenceProvince: string | null;
+    residenceCountry: string | null;
+    documentType: string | null;
+    documentNumber: string | null;
+  },
+  links: {
+    guestId: string;
+    role: string;
+    guest: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      country: string | null;
+      citizenship: string | null;
+      sex: string | null;
+      dateOfBirth: Date | null;
+      birthPlace: string | null;
+      residenceAddress: string | null;
+      residencePostalCode: string | null;
+      residenceCity: string | null;
+      residenceProvince: string | null;
+      residenceCountry: string | null;
+      documentType: string | null;
+      documentNumber: string | null;
+    };
+  }[],
+) {
+  const people = [
+    { guest: primary, isPrimary: true, role: links.find((link) => link.guestId === primary.id)?.role },
+    ...links.filter((link) => link.guestId !== primary.id).map((link) => ({ guest: link.guest, isPrimary: false, role: link.role })),
+  ];
+  return people.map(({ guest, isPrimary, role }) => {
+    const residence = [guest.residenceAddress, guest.residencePostalCode, guest.residenceCity, guest.residenceProvince, guest.residenceCountry]
+      .filter(Boolean)
+      .join(", ");
+    return {
+      id: guest.id,
+      name: guestDisplay(guest.firstName, guest.lastName),
+      role: roleLabel(role, isPrimary),
+      sex: sexLabel(guest.sex),
+      birth: guest.dateOfBirth ? formatLong(toISODate(guest.dateOfBirth)) : "Non indicata",
+      birthPlace: guest.birthPlace || "Non indicato",
+      citizenship: guest.citizenship || guest.country || "Non indicata",
+      residence: residence || "Non indicata",
+      documentType: knownDocumentType(guest.documentType),
+      documentLast4: documentLast4(guest.documentNumber),
+    };
+  });
 }

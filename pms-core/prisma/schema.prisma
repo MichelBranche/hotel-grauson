@@ -225,14 +225,28 @@ model Guest {
   lastName       String
   email          String?
   phone          String?
+  /// Legacy country. Check-in copies citizenship here. Alloggiati export is out of scope.
   country        String?
+  /// Citizenship collected at check-in. Alloggiati export is out of scope.
+  citizenship    String?
+  sex            String?
+  birthPlace     String?
+  dateOfBirth    DateTime?
+  residenceAddress    String?
+  residencePostalCode String?
+  residenceCity       String?
+  residenceProvince   String?
+  residenceCountry    String?
   documentType      String?
   documentNumber    String?
+  /// Issuing authority. Kept on the guest for reception. Alloggiati export is out of scope.
+  documentAuthority String?
+  /// Issue date, stored at UTC noon.
+  documentIssuedOn  DateTime?
   /// Issuing country. Kept on the guest for reception. Alloggiati export is out of scope.
   documentCountry   String?
   /// Expiry date, stored at UTC noon. Alloggiati export is out of scope.
   documentExpiresOn DateTime?
-  dateOfBirth       DateTime?
   notes          String   @default("")
   preferences    String   @default("[]")
   vip            Boolean  @default(false)
@@ -428,6 +442,8 @@ model ReservationGuest {
   guestId       String
   guest         Guest       @relation(fields: [guestId], references: [id])
   isPrimary     Boolean     @default(false)
+  /// LEADER (capogruppo) or GUEST. The stay primary is always LEADER.
+  role          String      @default("GUEST")
 }
 
 model ReservationExtra {

@@ -28,6 +28,7 @@ export function ReservationDesk({
   businessToday,
   balance,
   expiresLabel = null,
+  records = [],
 }: {
   reservation: PlanningReservation;
   stay: {
@@ -45,6 +46,18 @@ export function ReservationDesk({
   businessToday: string;
   balance: number;
   expiresLabel?: string | null;
+  records?: {
+    id: string;
+    name: string;
+    role: string;
+    sex: string;
+    birth: string;
+    birthPlace: string;
+    citizenship: string;
+    residence: string;
+    documentType: string | null;
+    documentLast4: string | null;
+  }[];
 }) {
   const router = useRouter();
   const [moveOpen, setMoveOpen] = useState(false);
@@ -175,19 +188,24 @@ export function ReservationDesk({
       </p>
       <p>Email: {live.email ?? "—"}</p>
       <p>Telefono: {live.phone ?? "—"}</p>
-      <p>Paese: {live.country ?? "Non indicato"}</p>
-      <ul className="grid gap-2">
-        {live.party.map((guest) => (
-          <li key={guest.id}>
-            {guest.isPrimary ? null : (
-              <span>
-                {guest.lastName} {guest.firstName} · altro ospite ·{" "}
-              </span>
-            )}
-            <MaskedDocument guestId={guest.id} documentType={guest.documentType} last4={guest.documentLast4} canReveal={permissions.canCheckIn} />
-          </li>
-        ))}
-      </ul>
+      <p>Cittadinanza: {live.country ?? "Non indicato"}</p>
+      {records.length ? (
+        <ul className="grid gap-3">
+          {records.map((guest) => (
+            <li key={guest.id} className="rounded-2xl bg-white/70 px-4 py-3">
+              <p>
+                {guest.name} <span className="text-[var(--pms-muted)]">· {guest.role}</span>
+              </p>
+              <p className="text-[var(--pms-muted)]">
+                {guest.sex} · nascita {guest.birth}, {guest.birthPlace}
+              </p>
+              <p className="text-[var(--pms-muted)]">Cittadinanza {guest.citizenship}</p>
+              <p className="text-[var(--pms-muted)]">Residenza {guest.residence}</p>
+              <MaskedDocument guestId={guest.id} documentType={guest.documentType} last4={guest.documentLast4} canReveal={permissions.canCheckIn} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="rounded-2xl bg-white/70 px-4 py-3">
         <p>Camera {formatMoneyExact(live.roomRate)}</p>
         <p>Extra {formatMoneyExact(live.extrasTotal)}</p>

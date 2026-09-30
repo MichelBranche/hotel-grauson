@@ -8,16 +8,40 @@ import { Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select } from "@pms-core/components/ui/input";
 import {
   DOCUMENT_TYPES,
-  companionIdentityReady,
-  documentReady,
+  SEX_OPTIONS,
+  checkInCompanionBlank,
+  checkInGuestComplete,
+  documentLast4,
   documentTypeLabel,
   maskedDocument,
-  primaryIdentityReady,
   type CheckInGuestFields,
 } from "@pms-core/lib/check-in-guest";
 import { formatLong } from "@pms-core/lib/dates";
 
-const STEPS = ["Soggiorno", "Ospiti", "Documenti", "Conferma"] as const;
+const STEPS = ["Soggiorno", "Ospiti", "Conferma"] as const;
+
+type DeskGuest = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  sex: string | null;
+  dateOfBirth: string | null;
+  birthPlace: string | null;
+  citizenship: string | null;
+  residenceAddress: string | null;
+  residencePostalCode: string | null;
+  residenceCity: string | null;
+  residenceProvince: string | null;
+  residenceCountry: string | null;
+  documentType: string | null;
+  documentNumber: string | null;
+  documentAuthority: string | null;
+  documentIssuedOn: string | null;
+  documentCountry: string | null;
+  documentExpiresOn: string | null;
+};
 
 type DeskStay = {
   code: string;
@@ -33,29 +57,26 @@ type DeskStay = {
   companions: DeskGuest[];
 };
 
-type DeskGuest = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-  country: string | null;
-  documentType: string | null;
-  documentNumber: string | null;
-  documentCountry: string | null;
-  documentExpiresOn: string | null;
-};
-
 type Draft = {
   key: string;
   id: string | null;
   firstName: string;
   lastName: string;
+  sex: string;
+  dateOfBirth: string;
+  birthPlace: string;
+  citizenship: string;
   email: string;
   phone: string;
-  country: string;
+  residenceAddress: string;
+  residencePostalCode: string;
+  residenceCity: string;
+  residenceProvince: string;
+  residenceCountry: string;
   documentType: string;
   documentNumber: string;
+  documentAuthority: string;
+  documentIssuedOn: string;
   documentCountry: string;
   documentExpiresOn: string;
 };
@@ -65,11 +86,21 @@ const emptyDraft = (key: string): Draft => ({
   id: null,
   firstName: "",
   lastName: "",
+  sex: "",
+  dateOfBirth: "",
+  birthPlace: "",
+  citizenship: "",
   email: "",
   phone: "",
-  country: "",
+  residenceAddress: "",
+  residencePostalCode: "",
+  residenceCity: "",
+  residenceProvince: "",
+  residenceCountry: "",
   documentType: "",
   documentNumber: "",
+  documentAuthority: "",
+  documentIssuedOn: "",
   documentCountry: "",
   documentExpiresOn: "",
 });
@@ -80,29 +111,34 @@ function toDraft(guest: DeskGuest): Draft {
     id: guest.id,
     firstName: guest.firstName,
     lastName: guest.lastName,
+    sex: guest.sex ?? "",
+    dateOfBirth: guest.dateOfBirth ?? "",
+    birthPlace: guest.birthPlace ?? "",
+    citizenship: guest.citizenship ?? "",
     email: guest.email ?? "",
     phone: guest.phone ?? "",
-    country: guest.country ?? "",
+    residenceAddress: guest.residenceAddress ?? "",
+    residencePostalCode: guest.residencePostalCode ?? "",
+    residenceCity: guest.residenceCity ?? "",
+    residenceProvince: guest.residenceProvince ?? "",
+    residenceCountry: guest.residenceCountry ?? "",
     documentType: guest.documentType ?? "",
     documentNumber: guest.documentNumber ?? "",
+    documentAuthority: guest.documentAuthority ?? "",
+    documentIssuedOn: guest.documentIssuedOn ?? "",
     documentCountry: guest.documentCountry ?? "",
     documentExpiresOn: guest.documentExpiresOn ?? "",
   };
 }
 
 function asFields(draft: Draft): CheckInGuestFields {
-  return {
-    id: draft.id,
-    firstName: draft.firstName,
-    lastName: draft.lastName,
-    email: draft.email,
-    phone: draft.phone,
-    country: draft.country,
-    documentType: draft.documentType,
-    documentNumber: draft.documentNumber,
-    documentCountry: draft.documentCountry,
-    documentExpiresOn: draft.documentExpiresOn,
-  };
+  return { ...draft, id: draft.id };
+}
+
+function padCompanions(existing: Draft[], limit: number) {
+  const next = existing.slice(0, limit);
+  while (next.length < limit) next.push(emptyDraft(`slot-${next.length + 1}`));
+  return next;
 }
 
 export function CheckInDesk({
@@ -124,7 +160,6 @@ export function CheckInDesk({
   const [primary, setPrimary] = useState<Draft>(emptyDraft("primary"));
   const [companions, setCompanions] = useState<Draft[]>([]);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
-  const [draftSeq, setDraftSeq] = useState(0);
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -153,9 +188,10 @@ export function CheckInDesk({
         setLoadError("Impossibile caricare il check-in.");
         return;
       }
+      const limit = Math.max(0, result.data.adults + result.data.children - 1);
       setStay(result.data);
       setPrimary(toDraft(result.data.primary));
-      setCompanions(result.data.companions.map(toDraft));
+      setCompanions(padCompanions(result.data.companions.map(toDraft), limit));
     });
     return () => {
       cancelled = true;
@@ -164,10 +200,10 @@ export function CheckInDesk({
 
   const partySize = (stay?.adults ?? 1) + (stay?.children ?? 0);
   const companionLimit = Math.max(0, partySize - 1);
-  const identityReady = primaryIdentityReady(primary) && companions.every(companionIdentityReady);
-  const documentsReady = documentReady(primary) && companions.every(documentReady);
+  const entered = companions.filter((guest) => !checkInCompanionBlank(asFields(guest)));
+  const guestsReady = checkInGuestComplete(asFields(primary)) && entered.every((guest) => checkInGuestComplete(asFields(guest)));
   const blocked = stay?.blocked ?? null;
-  const stepReady = step === 0 ? Boolean(stay) && !blocked && !loadError : step === 1 ? identityReady : step === 2 ? documentsReady : documentsReady && !blocked;
+  const stepReady = step === 0 ? Boolean(stay) && !blocked && !loadError : guestsReady && !blocked;
 
   function patchPrimary(patch: Partial<Draft>) {
     setPrimary((current) => ({ ...current, ...patch }));
@@ -182,7 +218,7 @@ export function CheckInDesk({
     setPending(true);
     const result = await checkInReservationAction(reservationId, {
       primary: asFields(primary),
-      companions: companions.map(asFields),
+      companions: entered.map(asFields),
     });
     setPending(false);
     await onCompleted(result);
@@ -254,89 +290,63 @@ export function CheckInDesk({
 
         {stay && step === 1 ? (
           <div className="grid gap-5">
-            <GuestIdentity
-              title="Ospite principale"
-              draft={primary}
-              email
-              phoneRequired
-              onChange={patchPrimary}
-            />
-            {companionLimit > 0 ? (
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm">Altri ospiti della camera</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={companions.length >= companionLimit}
-                    onClick={() => {
-                      const next = draftSeq + 1;
-                      setDraftSeq(next);
-                      setCompanions((current) => [...current, emptyDraft(`new-${next}`)]);
-                    }}
-                  >
-                    Aggiungi ospite
-                  </Button>
-                </div>
-                {companions.length === 0 ? <p className="text-sm text-[var(--pms-muted)]">Nessun altro ospite inserito.</p> : null}
-                {companions.map((companion, index) => (
-                  <div key={companion.key} className="grid gap-3 rounded-2xl border border-[var(--pms-line)] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm">Ospite {index + 2}</p>
+            <p className="text-sm text-[var(--pms-muted)]">
+              Composizione della camera: {partySize} {partySize === 1 ? "persona" : "persone"}. Il capogruppo è obbligatorio. Compila gli altri ospiti presenti. Telefono ed email sono facoltativi. Per la residenza in Italia servono anche CAP e provincia.
+            </p>
+            <GuestCard title="Capogruppo" role="Capogruppo" draft={primary} revealed={Boolean(revealed[primary.key])} onReveal={() => setRevealed((current) => ({ ...current, [primary.key]: !current[primary.key] }))} onChange={patchPrimary} />
+            {companions.map((companion, index) => {
+              const started = !checkInCompanionBlank(asFields(companion));
+              return (
+                <div key={companion.key} className="grid gap-3">
+                  {started || companion.id ? (
+                    <div className="flex justify-end">
                       <Button type="button" variant="ghost" size="sm" onClick={() => setCompanions((current) => current.filter((item) => item.key !== companion.key))}>
-                        Rimuovi
+                        Rimuovi ospite
                       </Button>
                     </div>
-                    <GuestIdentity title="" draft={companion} onChange={(patch) => patchCompanion(companion.key, patch)} />
-                  </div>
-                ))}
-              </div>
+                  ) : null}
+                  <GuestCard
+                    title={`Ospite ${index + 2}`}
+                    role="Ospite"
+                    draft={companion}
+                    revealed={Boolean(revealed[companion.key])}
+                    onReveal={() => setRevealed((current) => ({ ...current, [companion.key]: !current[companion.key] }))}
+                    onChange={(patch) => patchCompanion(companion.key, patch)}
+                  />
+                </div>
+              );
+            })}
+            {companions.length < companionLimit ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCompanions((current) => [...current, emptyDraft(`slot-${current.length + 1}-${Date.now()}`)])}
+              >
+                Aggiungi ospite
+              </Button>
             ) : null}
           </div>
         ) : null}
 
         {stay && step === 2 ? (
-          <div className="grid gap-4">
-            <p className="text-sm text-[var(--pms-muted)]">I dati restano in anagrafica per la gestione del soggiorno.</p>
-            <GuestDocument
-              title={`${primary.lastName} ${primary.firstName}`.trim() || "Ospite principale"}
-              draft={primary}
-              revealed={Boolean(revealed[primary.key])}
-              onReveal={() => setRevealed((current) => ({ ...current, [primary.key]: !current[primary.key] }))}
-              onChange={patchPrimary}
-            />
-            {companions.map((companion) => (
-              <GuestDocument
-                key={companion.key}
-                title={`${companion.lastName} ${companion.firstName}`.trim() || "Ospite"}
-                draft={companion}
-                revealed={Boolean(revealed[companion.key])}
-                onReveal={() => setRevealed((current) => ({ ...current, [companion.key]: !current[companion.key] }))}
-                onChange={(patch) => patchCompanion(companion.key, patch)}
-              />
-            ))}
-          </div>
-        ) : null}
-
-        {stay && step === 3 ? (
           <div className="grid gap-4 text-sm">
             <p>
               {stay.code} · camera {stay.roomNumber}. La camera risulterà occupata.
             </p>
             <ul className="grid gap-3">
-              {[primary, ...companions].map((guest, index) => (
+              {[primary, ...entered].map((guest) => (
                 <li key={guest.key} className="rounded-2xl bg-white/70 px-4 py-3">
                   <p>
                     {guest.lastName} {guest.firstName}
-                    <span className="text-[var(--pms-muted)]"> · {index === 0 ? "Ospite principale" : "Ospite"}</span>
+                    <span className="text-[var(--pms-muted)]"> · {guest.key === primary.key ? "Capogruppo" : "Ospite"}</span>
                   </p>
                   <p className="text-[var(--pms-muted)]">
-                    {guest.country || "Paese mancante"}
-                    {index === 0 && guest.phone ? ` · ${guest.phone}` : ""}
+                    {guest.citizenship || "Cittadinanza mancante"}
+                    {guest.residenceCity ? ` · ${guest.residenceCity}` : ""}
                   </p>
                   <p>
-                    {documentTypeLabel(guest.documentType)} · {revealed[guest.key] ? guest.documentNumber : maskedDocument(guest.documentNumber.length >= 8 ? guest.documentNumber.replace(/\s+/g, "").slice(-4) : null)}
+                    {documentTypeLabel(guest.documentType)} ·{" "}
+                    {revealed[guest.key] ? guest.documentNumber : maskedDocument(documentLast4(guest.documentNumber))}
                   </p>
                 </li>
               ))}
@@ -354,7 +364,7 @@ export function CheckInDesk({
               Annulla
             </Button>
           )}
-          {step < 3 ? (
+          {step < 2 ? (
             <Button type="button" disabled={!stepReady || loading || pending} onClick={() => setStep((current) => current + 1)}>
               Continua
             </Button>
@@ -369,22 +379,27 @@ export function CheckInDesk({
   );
 }
 
-function GuestIdentity({
+function GuestCard({
   title,
+  role,
   draft,
-  email = false,
-  phoneRequired = false,
+  revealed,
+  onReveal,
   onChange,
 }: {
   title: string;
+  role: string;
   draft: Draft;
-  email?: boolean;
-  phoneRequired?: boolean;
+  revealed: boolean;
+  onReveal: () => void;
   onChange: (patch: Partial<Draft>) => void;
 }) {
   return (
-    <div className="grid gap-3">
-      {title ? <p className="text-sm">{title}</p> : null}
+    <section className="grid gap-4 rounded-2xl border border-[var(--pms-line)] p-4">
+      <div>
+        <p className="text-sm">{title}</p>
+        <p className="text-xs text-[var(--pms-muted)]">Ruolo: {role}</p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nome">
           <Input value={draft.firstName} autoComplete="off" onChange={(event) => onChange({ firstName: event.target.value })} required />
@@ -392,38 +407,51 @@ function GuestIdentity({
         <Field label="Cognome">
           <Input value={draft.lastName} autoComplete="off" onChange={(event) => onChange({ lastName: event.target.value })} required />
         </Field>
-        <Field label={phoneRequired ? "Telefono" : "Telefono (facoltativo)"}>
-          <Input value={draft.phone} autoComplete="off" onChange={(event) => onChange({ phone: event.target.value })} required={phoneRequired} />
+        <Field label="Sesso">
+          <Select value={draft.sex} onChange={(event) => onChange({ sex: event.target.value })} required>
+            <option value="">Seleziona</option>
+            {SEX_OPTIONS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
         </Field>
-        <Field label="Paese">
-          <Input value={draft.country} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ country: event.target.value })} required />
+        <Field label="Data di nascita">
+          <Input type="date" autoComplete="off" value={draft.dateOfBirth} onChange={(event) => onChange({ dateOfBirth: event.target.value })} required />
         </Field>
-        {email ? (
-          <Field label="Email (facoltativa)">
-            <Input type="text" inputMode="email" autoComplete="off" value={draft.email} onChange={(event) => onChange({ email: event.target.value })} />
-          </Field>
-        ) : null}
+        <Field label="Luogo di nascita">
+          <Input value={draft.birthPlace} autoComplete="off" onChange={(event) => onChange({ birthPlace: event.target.value })} required />
+        </Field>
+        <Field label="Cittadinanza">
+          <Input value={draft.citizenship} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ citizenship: event.target.value })} required />
+        </Field>
+        <Field label="Telefono (facoltativo)">
+          <Input value={draft.phone} autoComplete="off" onChange={(event) => onChange({ phone: event.target.value })} />
+        </Field>
+        <Field label="Email (facoltativa)">
+          <Input type="text" inputMode="email" autoComplete="off" value={draft.email} onChange={(event) => onChange({ email: event.target.value })} />
+        </Field>
       </div>
-    </div>
-  );
-}
-
-function GuestDocument({
-  title,
-  draft,
-  revealed,
-  onReveal,
-  onChange,
-}: {
-  title: string;
-  draft: Draft;
-  revealed: boolean;
-  onReveal: () => void;
-  onChange: (patch: Partial<Draft>) => void;
-}) {
-  return (
-    <div className="grid gap-3 rounded-2xl border border-[var(--pms-line)] p-4">
-      <p className="text-sm">{title}</p>
+      <p className="text-xs text-[var(--pms-muted)]">Residenza</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Indirizzo">
+          <Input value={draft.residenceAddress} autoComplete="off" onChange={(event) => onChange({ residenceAddress: event.target.value })} required />
+        </Field>
+        <Field label="CAP">
+          <Input value={draft.residencePostalCode} autoComplete="off" onChange={(event) => onChange({ residencePostalCode: event.target.value })} />
+        </Field>
+        <Field label="Comune">
+          <Input value={draft.residenceCity} autoComplete="off" onChange={(event) => onChange({ residenceCity: event.target.value })} required />
+        </Field>
+        <Field label="Provincia">
+          <Input value={draft.residenceProvince} autoComplete="off" onChange={(event) => onChange({ residenceProvince: event.target.value })} />
+        </Field>
+        <Field label="Paese di residenza">
+          <Input value={draft.residenceCountry} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ residenceCountry: event.target.value })} required />
+        </Field>
+      </div>
+      <p className="text-xs text-[var(--pms-muted)]">Documento</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Tipo documento">
           <Select value={draft.documentType} onChange={(event) => onChange({ documentType: event.target.value })} required>
@@ -451,13 +479,19 @@ function GuestDocument({
             </Button>
           </div>
         </Field>
-        <Field label="Paese di emissione (facoltativo)">
-          <Input value={draft.documentCountry} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ documentCountry: event.target.value })} />
+        <Field label="Ente di rilascio">
+          <Input value={draft.documentAuthority} autoComplete="off" onChange={(event) => onChange({ documentAuthority: event.target.value })} required />
         </Field>
-        <Field label="Scadenza (facoltativa)">
+        <Field label="Paese di emissione">
+          <Input value={draft.documentCountry} autoComplete="off" placeholder="Es. IT" onChange={(event) => onChange({ documentCountry: event.target.value })} required />
+        </Field>
+        <Field label="Data di emissione">
+          <Input type="date" autoComplete="off" value={draft.documentIssuedOn} onChange={(event) => onChange({ documentIssuedOn: event.target.value })} required />
+        </Field>
+        <Field label="Data di scadenza">
           <Input type="date" autoComplete="off" value={draft.documentExpiresOn} onChange={(event) => onChange({ documentExpiresOn: event.target.value })} />
         </Field>
       </div>
-    </div>
+    </section>
   );
 }
