@@ -61,6 +61,11 @@ export function ReservationDesk({
     taxesTotal: stay.taxesTotal,
     paid: stay.paid,
     guestName: reservation.guestName,
+    guestFirstName: reservation.guestFirstName,
+    guestLastName: reservation.guestLastName,
+    email: reservation.email,
+    phone: reservation.phone,
+    country: reservation.country,
     balance,
   });
   const signature = [
@@ -76,6 +81,11 @@ export function ReservationDesk({
     stay.taxesTotal,
     stay.paid,
     reservation.guestName,
+    reservation.guestFirstName,
+    reservation.guestLastName,
+    reservation.email ?? "",
+    reservation.phone ?? "",
+    reservation.country ?? "",
     balance,
     reservation.notes,
   ].join("|");
@@ -96,6 +106,11 @@ export function ReservationDesk({
       taxesTotal: stay.taxesTotal,
       paid: stay.paid,
       guestName: reservation.guestName,
+      guestFirstName: reservation.guestFirstName,
+      guestLastName: reservation.guestLastName,
+      email: reservation.email,
+      phone: reservation.phone,
+      country: reservation.country,
       balance,
     });
   }
@@ -111,6 +126,16 @@ export function ReservationDesk({
         checkOut: patch.checkOut,
         nights: patch.nights,
         balance: Math.max(0, patch.total - current.paid),
+        ...(patch.guestName !== undefined
+          ? {
+              guestName: patch.guestName,
+              guestFirstName: patch.guestFirstName ?? current.guestFirstName,
+              guestLastName: patch.guestLastName ?? current.guestLastName,
+              email: patch.email ?? null,
+              phone: patch.phone ?? null,
+              country: patch.country ?? null,
+            }
+          : {}),
       }));
       return;
     }
@@ -143,8 +168,9 @@ export function ReservationDesk({
       <p>
         {reservation.adults} adulti{reservation.children ? ` · ${reservation.children} bambini` : ""}
       </p>
-      <p>Email: {reservation.email ?? "—"}</p>
-      <p>Telefono: {reservation.phone ?? "—"}</p>
+      <p>Email: {live.email ?? "—"}</p>
+      <p>Telefono: {live.phone ?? "—"}</p>
+      <p>Paese: {live.country ?? "Non indicato"}</p>
       <div className="rounded-2xl bg-white/70 px-4 py-3">
         <p>Camera {formatMoneyExact(live.roomRate)}</p>
         <p>Extra {formatMoneyExact(live.extrasTotal)}</p>
@@ -163,6 +189,13 @@ export function ReservationDesk({
           checkIn: reservation.checkIn,
           checkOut: live.checkOut,
           balance: live.balance,
+        }}
+        guest={{
+          firstName: live.guestFirstName,
+          lastName: live.guestLastName,
+          email: live.email,
+          phone: live.phone,
+          country: live.country,
         }}
         extras={extras}
         permissions={permissions}
@@ -214,6 +247,10 @@ export function ReservationDesk({
             extrasTotal: next.extrasTotal,
             taxesTotal: next.taxesTotal,
             guestName: next.guestName,
+            guestFirstName: next.guestFirstName,
+            guestLastName: next.guestLastName,
+            email: next.email,
+            phone: next.phone,
             balance: Math.max(0, next.total - current.paid),
           }));
           router.refresh();

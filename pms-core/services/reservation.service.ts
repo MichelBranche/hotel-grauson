@@ -6,6 +6,7 @@ import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
 import { canForceCancel } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
+import { checkInGuestComplete, parseCheckInGuest, type CheckInGuestFields } from "@pms-core/lib/check-in-guest";
 import { ForbiddenError, DomainError } from "@pms-core/lib/errors";
 import { formatShort, nightsBetween, toDate, toISODate, todayInTimeZone } from "@pms-core/lib/dates";
 import { PAY_AT_PROPERTY_NOTE } from "@pms-core/lib/pay-at-property";
@@ -372,6 +373,7 @@ export const reservationService = {
       ratePlanId: quote.ratePlanId,
       email: reservation.guest.email,
       phone: reservation.guest.phone,
+      country: reservation.guest.country,
       adults: draft.adults,
       children: draft.children ?? 0,
       checkIn: draft.checkIn,
@@ -503,6 +505,46 @@ export const reservationService = {
     };
   },
 
+  async checkIn(id: string, guest: CheckInGuestFields, actor: Actor = {}) {
+    const parsed = parseCheckInGuest(guest);
+    const current = await prisma.reservation.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        guestId: true,
+        propertyId: true,
+        guest: { select: { firstName: true, lastName: true } },
+        room: { select: { number: true, status: true } },
+      },
+    });
+    if (!current) throw new DomainError("Prenotazione non trovata.");
+    assertStatusTransition(current.status, "CHECKED_IN");
+    const blocked = checkInBlockMessage(current.room);
+    if (blocked) throw new DomainError(blocked);
+    await prisma.guest.update({
+      where: { id: current.guestId },
+      data: {
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+        email: parsed.email,
+        phone: parsed.phone,
+        country: parsed.country,
+      },
+    });
+    await auditService.record({
+      propertyId: current.propertyId,
+      userId: actor.id,
+      action: "guest.update",
+      entity: "Guest",
+      entityId: current.guestId,
+      before: { name: `${current.guest.lastName} ${current.guest.firstName}` },
+      after: { name: `${parsed.lastName} ${parsed.firstName}`, phone: parsed.phone, country: parsed.country },
+    });
+    const result = await this.updateStatus(id, "CHECKED_IN", actor);
+    return { ...result, guest: parsed };
+  },
+
   async updateStatus(id: string, status: ReservationStatus, actor: Actor = {}, options?: { reason?: string; force?: boolean }) {
     const current = await prisma.reservation.findUnique({
       where: { id },
@@ -517,7 +559,7 @@ export const reservationService = {
         nights: true,
         checkIn: true,
         checkOut: true,
-        guest: { select: { firstName: true, lastName: true } },
+        guest: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, country: true } },
         room: { select: { number: true, status: true } },
         property: { select: { timezone: true } },
       },
@@ -537,6 +579,9 @@ export const reservationService = {
     if (status === "CHECKED_IN") {
       const blocked = checkInBlockMessage(current.room);
       if (blocked) throw new DomainError(blocked);
+      if (!checkInGuestComplete(current.guest)) {
+        throw new DomainError("Completa nome, cognome, telefono e paese prima del check-in.");
+      }
     }
 
     const today = todayInTimeZone(current.property.timezone || propertyConfig.timezone);

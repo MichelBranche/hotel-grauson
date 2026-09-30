@@ -34,6 +34,7 @@ export type PlanningReservation = {
   ratePlanId: string | null;
   email: string | null;
   phone: string | null;
+  country: string | null;
   adults: number;
   children: number;
   checkIn: string;

@@ -9,6 +9,7 @@ import type { ReservationStatus } from "@prisma/client";
 import { requirePermission } from "@pms-core/auth/guards";
 import { wrapAction } from "@pms-core/actions/result";
 import type { Permission } from "@pms-core/config/permissions";
+import type { CheckInGuestFields } from "@pms-core/lib/check-in-guest";
 import { reservationService, type ReservationChange } from "@pms-core/services/reservation.service";
 import type { SessionUser } from "@pms-core/types";
 
@@ -89,6 +90,15 @@ export async function moveReservationAction(input: { id: string } & ReservationC
     const reservation = await reservationService.move(id, change, actor(session));
     refresh();
     return reservation;
+  });
+}
+
+export async function checkInReservationAction(id: string, guest: CheckInGuestFields) {
+  return wrapAction(async () => {
+    const session = await requirePermission("reservations.checkin");
+    const result = await reservationService.checkIn(id, guest, actor(session));
+    refresh();
+    return result;
   });
 }
 
