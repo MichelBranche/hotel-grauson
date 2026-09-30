@@ -35,6 +35,14 @@ export type PlanningReservation = {
   email: string | null;
   phone: string | null;
   country: string | null;
+  party: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    isPrimary: boolean;
+    documentType: string | null;
+    documentLast4: string | null;
+  }[];
   adults: number;
   children: number;
   checkIn: string;

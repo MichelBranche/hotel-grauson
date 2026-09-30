@@ -10,6 +10,7 @@ import { requirePermission } from "@pms-core/auth/guards";
 import { wrapAction } from "@pms-core/actions/result";
 import type { Permission } from "@pms-core/config/permissions";
 import type { CheckInGuestFields } from "@pms-core/lib/check-in-guest";
+import { DomainError, isDomainError } from "@pms-core/lib/errors";
 import { reservationService, type ReservationChange } from "@pms-core/services/reservation.service";
 import type { SessionUser } from "@pms-core/types";
 
@@ -93,12 +94,46 @@ export async function moveReservationAction(input: { id: string } & ReservationC
   });
 }
 
-export async function checkInReservationAction(id: string, guest: CheckInGuestFields) {
+function safeDeskError(error: unknown): never {
+  if (isDomainError(error)) throw error;
+  throw new DomainError("Check-in non riuscito.");
+}
+
+export async function loadCheckInDeskAction(id: string) {
   return wrapAction(async () => {
     const session = await requirePermission("reservations.checkin");
-    const result = await reservationService.checkIn(id, guest, actor(session));
-    refresh();
-    return result;
+    try {
+      return await reservationService.checkInDesk(id, session.propertyId);
+    } catch (error) {
+      safeDeskError(error);
+    }
+  });
+}
+
+export async function revealGuestDocumentAction(guestId: string) {
+  return wrapAction(async () => {
+    const session = await requirePermission("reservations.checkin");
+    try {
+      return await reservationService.revealGuestDocument(guestId, session.propertyId);
+    } catch (error) {
+      safeDeskError(error);
+    }
+  });
+}
+
+export async function checkInReservationAction(
+  id: string,
+  input: { primary: CheckInGuestFields; companions: CheckInGuestFields[] },
+) {
+  return wrapAction(async () => {
+    const session = await requirePermission("reservations.checkin");
+    try {
+      const result = await reservationService.checkIn(id, input, actor(session), session.propertyId);
+      refresh();
+      return result;
+    } catch (error) {
+      safeDeskError(error);
+    }
   });
 }
 

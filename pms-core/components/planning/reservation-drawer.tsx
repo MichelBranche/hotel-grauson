@@ -5,6 +5,7 @@ import { BedDouble, CalendarDays, Globe, Mail, Phone, Users } from "lucide-react
 import Link from "next/link";
 
 import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
+import { MaskedDocument } from "@pms-core/components/reservations/masked-document";
 import { reservationStatusMeta } from "@pms-core/config/status";
 import { PAY_AT_PROPERTY_NOTE } from "@pms-core/lib/pay-at-property";
 import { StatusBadge } from "@pms-core/components/ui/badge";
@@ -67,6 +68,16 @@ export function ReservationDrawer({
         <div className="flex items-center gap-3 text-[var(--pms-muted)]">
           <Globe className="size-4" /> {reservation.country ?? "Non indicato"}
         </div>
+        {reservation.party.map((guest) => (
+          <div key={guest.id} className="text-sm text-[var(--pms-muted)]">
+            {guest.isPrimary ? null : (
+              <p>
+                {guest.lastName} {guest.firstName} · altro ospite
+              </p>
+            )}
+            <MaskedDocument guestId={guest.id} documentType={guest.documentType} last4={guest.documentLast4} canReveal={permissions.canCheckIn} />
+          </div>
+        ))}
         <div className="flex items-start gap-3">
           <CalendarDays className="mt-0.5 size-4 shrink-0 text-[var(--pms-muted)]" />
           <p className="min-w-0">
@@ -108,13 +119,6 @@ export function ReservationDrawer({
             checkIn: reservation.checkIn,
             checkOut: reservation.checkOut,
             balance: reservation.total,
-          }}
-          guest={{
-            firstName: reservation.guestFirstName,
-            lastName: reservation.guestLastName,
-            email: reservation.email,
-            phone: reservation.phone,
-            country: reservation.country,
           }}
           extras={extras}
           permissions={permissions}

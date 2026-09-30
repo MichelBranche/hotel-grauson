@@ -35,6 +35,7 @@ export const reservationRepo = {
       },
       include: {
         guest: true,
+        guests: { include: { guest: true } },
         room: true,
         roomType: true,
       },

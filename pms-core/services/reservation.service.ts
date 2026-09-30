@@ -6,7 +6,17 @@ import { prisma } from "@pms-core/database/client";
 import { reservationRepo } from "@pms-core/database/repositories/reservation.repo";
 import { canForceCancel } from "@pms-core/config/permissions";
 import { propertyConfig } from "@pms-core/config/property";
-import { checkInGuestComplete, parseCheckInGuest, type CheckInGuestFields } from "@pms-core/lib/check-in-guest";
+import { documentAuditAfter } from "@pms-core/lib/check-in-audit";
+import {
+  checkInGuestComplete,
+  companionGuestComplete,
+  documentLast4,
+  knownDocumentType,
+  parseCheckInParty,
+  stayParty,
+  type CheckInGuestFields,
+  type StayGuestSummary,
+} from "@pms-core/lib/check-in-guest";
 import { ForbiddenError, DomainError } from "@pms-core/lib/errors";
 import { formatShort, nightsBetween, toDate, toISODate, todayInTimeZone } from "@pms-core/lib/dates";
 import { PAY_AT_PROPERTY_NOTE } from "@pms-core/lib/pay-at-property";
@@ -374,6 +384,7 @@ export const reservationService = {
       email: reservation.guest.email,
       phone: reservation.guest.phone,
       country: reservation.guest.country,
+      party: stayParty(reservation.guest, []),
       adults: draft.adults,
       children: draft.children ?? 0,
       checkIn: draft.checkIn,
@@ -505,44 +516,127 @@ export const reservationService = {
     };
   },
 
-  async checkIn(id: string, guest: CheckInGuestFields, actor: Actor = {}) {
-    const parsed = parseCheckInGuest(guest);
-    const current = await prisma.reservation.findUnique({
-      where: { id },
+  async checkInDesk(id: string, propertyId: string) {
+    const current = await prisma.reservation.findFirst({
+      where: { id, propertyId },
+      select: {
+        id: true,
+        code: true,
+        adults: true,
+        children: true,
+        nights: true,
+        checkIn: true,
+        checkOut: true,
+        guestId: true,
+        guest: true,
+        guests: { include: { guest: true } },
+        room: { select: { number: true, status: true, roomType: { select: { name: true } } } },
+      },
+    });
+    if (!current) throw new DomainError("Prenotazione non trovata.");
+    const companions = current.guests.filter((link) => link.guestId !== current.guestId);
+    return {
+      code: current.code,
+      checkIn: toISODate(current.checkIn),
+      checkOut: toISODate(current.checkOut),
+      nights: current.nights,
+      adults: current.adults,
+      children: current.children,
+      roomNumber: current.room.number,
+      roomTypeName: current.room.roomType.name,
+      blocked: checkInBlockMessage(current.room),
+      primary: toDeskGuest(current.guest),
+      companions: companions.map((link) => toDeskGuest(link.guest)),
+    };
+  },
+
+  async revealGuestDocument(guestId: string, propertyId: string) {
+    const guest = await prisma.guest.findFirst({
+      where: { id: guestId, propertyId },
+      select: { documentNumber: true },
+    });
+    if (!guest) throw new DomainError("Ospite non trovato.");
+    return { documentNumber: guest.documentNumber };
+  },
+
+  /**
+   * Saves check-in guests on the existing Guest rows, then marks the stay in house.
+   * Document numbers stay on Guest for reception. Audit stores type and a short reference only.
+   * Alloggiati / Questura export is out of scope.
+   */
+  async checkIn(id: string, input: { primary: CheckInGuestFields; companions: CheckInGuestFields[] }, actor: Actor = {}, propertyId?: string) {
+    const current = await prisma.reservation.findFirst({
+      where: { id, ...(propertyId ? { propertyId } : {}) },
       select: {
         id: true,
         status: true,
         guestId: true,
         propertyId: true,
-        guest: { select: { firstName: true, lastName: true } },
+        adults: true,
+        children: true,
         room: { select: { number: true, status: true } },
+        guests: { select: { id: true, guestId: true } },
       },
     });
     if (!current) throw new DomainError("Prenotazione non trovata.");
     assertStatusTransition(current.status, "CHECKED_IN");
     const blocked = checkInBlockMessage(current.room);
     if (blocked) throw new DomainError(blocked);
-    await prisma.guest.update({
-      where: { id: current.guestId },
-      data: {
-        firstName: parsed.firstName,
-        lastName: parsed.lastName,
-        email: parsed.email,
-        phone: parsed.phone,
-        country: parsed.country,
-      },
+    const parsed = parseCheckInParty({
+      primary: input.primary,
+      companions: input.companions,
+      partySize: current.adults + current.children,
     });
-    await auditService.record({
-      propertyId: current.propertyId,
-      userId: actor.id,
-      action: "guest.update",
-      entity: "Guest",
-      entityId: current.guestId,
-      before: { name: `${current.guest.lastName} ${current.guest.firstName}` },
-      after: { name: `${parsed.lastName} ${parsed.firstName}`, phone: parsed.phone, country: parsed.country },
+    const linked = new Set(current.guests.map((link) => link.guestId));
+    for (const companion of parsed.companions) {
+      if (companion.id && (companion.id === current.guestId || !linked.has(companion.id))) {
+        throw new DomainError("Uno degli ospiti non appartiene a questa prenotazione.");
+      }
+    }
+
+    let party: StayGuestSummary[] = [];
+    await prisma.$transaction(async (tx) => {
+      const next: StayGuestSummary[] = [];
+      await tx.guest.update({ where: { id: current.guestId }, data: guestDocumentData(parsed.primary) });
+      await auditGuestDocument(tx, current.propertyId, actor.id, current.guestId, parsed.primary.documentType, parsed.primary.documentNumber);
+      next.push(summaryOf(current.guestId, parsed.primary, true));
+      const keep = new Set<string>();
+      for (const companion of parsed.companions) {
+        if (companion.id) {
+          keep.add(companion.id);
+          await tx.guest.update({ where: { id: companion.id }, data: guestDocumentData(companion) });
+          await auditGuestDocument(tx, current.propertyId, actor.id, companion.id, companion.documentType, companion.documentNumber);
+          next.push(summaryOf(companion.id, companion, false));
+          continue;
+        }
+        const created = await tx.guest.create({
+          data: { propertyId: current.propertyId, ...guestDocumentData(companion), notes: "" },
+        });
+        await tx.reservationGuest.create({ data: { reservationId: current.id, guestId: created.id, isPrimary: false } });
+        await auditGuestDocument(tx, current.propertyId, actor.id, created.id, companion.documentType, companion.documentNumber);
+        next.push(summaryOf(created.id, companion, false));
+      }
+      const removed = current.guests.filter((link) => link.guestId !== current.guestId && !keep.has(link.guestId));
+      if (removed.length) {
+        await tx.reservationGuest.deleteMany({ where: { id: { in: removed.map((link) => link.id) } } });
+      }
+      party = next;
     });
+
     const result = await this.updateStatus(id, "CHECKED_IN", actor);
-    return { ...result, guest: parsed };
+    return {
+      ...result,
+      guest: {
+        firstName: parsed.primary.firstName,
+        lastName: parsed.primary.lastName,
+        email: parsed.primary.email,
+        phone: parsed.primary.phone,
+        country: parsed.primary.country,
+        documentType: parsed.primary.documentType,
+        documentLast4: documentLast4(parsed.primary.documentNumber),
+      },
+      party,
+    };
   },
 
   async updateStatus(id: string, status: ReservationStatus, actor: Actor = {}, options?: { reason?: string; force?: boolean }) {
@@ -559,7 +653,32 @@ export const reservationService = {
         nights: true,
         checkIn: true,
         checkOut: true,
-        guest: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, country: true } },
+        guest: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            country: true,
+            documentType: true,
+            documentNumber: true,
+          },
+        },
+        guests: {
+          select: {
+            isPrimary: true,
+            guest: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                country: true,
+                documentType: true,
+                documentNumber: true,
+              },
+            },
+          },
+        },
         room: { select: { number: true, status: true } },
         property: { select: { timezone: true } },
       },
@@ -580,7 +699,11 @@ export const reservationService = {
       const blocked = checkInBlockMessage(current.room);
       if (blocked) throw new DomainError(blocked);
       if (!checkInGuestComplete(current.guest)) {
-        throw new DomainError("Completa nome, cognome, telefono e paese prima del check-in.");
+        throw new DomainError("Completa i dati dell'ospite principale prima del check-in.");
+      }
+      const companions = current.guests.filter((link) => !link.isPrimary && link.guest.id !== current.guest.id);
+      if (companions.some((link) => !companionGuestComplete(link.guest))) {
+        throw new DomainError("Completa i dati degli altri ospiti prima del check-in.");
       }
     }
 
@@ -796,3 +919,87 @@ export const reservationService = {
     return { id };
   },
 };
+
+function toDeskGuest(guest: {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  country: string | null;
+  documentType: string | null;
+  documentNumber: string | null;
+  documentCountry: string | null;
+  documentExpiresOn: Date | null;
+}) {
+  return {
+    id: guest.id,
+    firstName: guest.firstName,
+    lastName: guest.lastName,
+    email: guest.email,
+    phone: guest.phone,
+    country: guest.country,
+    documentType: knownDocumentType(guest.documentType),
+    documentNumber: guest.documentNumber,
+    documentCountry: guest.documentCountry,
+    documentExpiresOn: guest.documentExpiresOn ? toISODate(guest.documentExpiresOn) : null,
+  };
+}
+
+function guestDocumentData(guest: {
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone: string | null;
+  country: string;
+  documentType: string;
+  documentNumber: string;
+  documentCountry: string | null;
+  documentExpiresOn: string | null;
+}) {
+  return {
+    firstName: guest.firstName,
+    lastName: guest.lastName,
+    phone: guest.phone,
+    country: guest.country,
+    documentType: guest.documentType,
+    documentNumber: guest.documentNumber,
+    documentCountry: guest.documentCountry,
+    documentExpiresOn: guest.documentExpiresOn ? toDate(guest.documentExpiresOn) : null,
+    ...("email" in guest ? { email: guest.email ?? null } : {}),
+  };
+}
+
+function summaryOf(
+  id: string,
+  guest: { firstName: string; lastName: string; documentType: string; documentNumber: string },
+  isPrimary: boolean,
+): StayGuestSummary {
+  return {
+    id,
+    firstName: guest.firstName,
+    lastName: guest.lastName,
+    isPrimary,
+    documentType: knownDocumentType(guest.documentType),
+    documentLast4: documentLast4(guest.documentNumber),
+  };
+}
+
+async function auditGuestDocument(
+  tx: Prisma.TransactionClient,
+  propertyId: string,
+  userId: string | null | undefined,
+  guestId: string,
+  documentType: string,
+  documentNumber: string,
+) {
+  await auditService.record({
+    tx,
+    propertyId,
+    userId,
+    action: "guest.document",
+    entity: "Guest",
+    entityId: guestId,
+    after: { profileUpdated: true, ...documentAuditAfter(documentType, documentNumber) },
+  });
+}
