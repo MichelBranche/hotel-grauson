@@ -9,15 +9,18 @@ import {
   addReservationExtraAction,
   addReservationPaymentAction,
   cancelReservationAction,
+  checkInReservationAction,
   updateReservationStatusAction,
 } from "@pms-core/actions/reservations";
 import { reportAction } from "@pms-core/components/ui/action-feedback";
 import { Button } from "@pms-core/components/ui/button";
 import { ConfirmDialog, Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@pms-core/components/ui/input";
+import { checkInGuestComplete } from "@pms-core/lib/check-in-guest";
 import { formatShort, todayISO } from "@pms-core/lib/dates";
 import { CONFIRM_NOTIFICATION_SOUND, playPmsSound } from "@pms-core/lib/pms-sound";
 import { formatMoneyExact } from "@pms-core/lib/money";
+import { guestDisplay } from "@pms-core/lib/utils";
 import { actionsFor, checkInBlockMessage, earlyCheckout, primaryDeskAction, type DeskAction } from "@pms-core/lib/reservation-status";
 
 const PAYMENT_METHODS = [
@@ -34,6 +37,20 @@ export type StayPatch = {
   total: number;
   checkOut: string;
   nights: number;
+  guestName?: string;
+  guestFirstName?: string;
+  guestLastName?: string;
+  email?: string | null;
+  phone?: string | null;
+  country?: string | null;
+};
+
+type CheckInGuest = {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  country: string | null;
 };
 
 export type DeskPermissions = {
@@ -48,6 +65,7 @@ export type DeskPermissions = {
 
 export function LifecycleActions({
   reservation,
+  guest,
   extras,
   permissions,
   businessToday,
@@ -67,6 +85,7 @@ export function LifecycleActions({
     checkOut: string;
     balance: number;
   };
+  guest: CheckInGuest;
   extras: { id: string; name: string; price: number }[];
   permissions: DeskPermissions;
   businessToday: string;
@@ -90,6 +109,12 @@ export function LifecycleActions({
   const [extraOpen, setExtraOpen] = useState(false);
   const [extraId, setExtraId] = useState(extras[0]?.id ?? "");
   const [quantity, setQuantity] = useState("1");
+  const [guestOpen, setGuestOpen] = useState(false);
+  const [firstName, setFirstName] = useState(guest.firstName);
+  const [lastName, setLastName] = useState(guest.lastName);
+  const [email, setEmail] = useState(guest.email ?? "");
+  const [phone, setPhone] = useState(guest.phone ?? "");
+  const [country, setCountry] = useState(guest.country ?? "");
 
   const departure = earlyCheckout(reservation.checkIn, reservation.checkOut, businessToday || todayISO());
   const blocked = checkInBlockMessage({ number: reservation.roomNumber, status: reservation.roomStatus });
@@ -98,7 +123,19 @@ export function LifecycleActions({
   const primary = primaryDeskAction(reservation.status);
   const primaryAllowed = primary !== null && actions.includes(primary);
 
-  async function finish(result: { ok: true; data: { message: string; housekeepingCreated: boolean; status: ReservationStatus; roomStatus: RoomStatus; total: number; checkOut: string; nights: number } } | { ok: false; error: string }) {
+  async function finish(result: {
+    ok: true;
+    data: {
+      message: string;
+      housekeepingCreated: boolean;
+      status: ReservationStatus;
+      roomStatus: RoomStatus;
+      total: number;
+      checkOut: string;
+      nights: number;
+      guest?: { firstName: string; lastName: string; email: string | null; phone: string; country: string };
+    };
+  } | { ok: false; error: string }) {
     setPending(false);
     if (!result.ok) {
       toast.error(result.error, { id: `reservation-${reservation.id}` });
@@ -110,12 +147,23 @@ export function LifecycleActions({
         ? { label: "Housekeeping", onClick: () => router.push("/pms/housekeeping") }
         : undefined,
     });
+    const saved = result.data.guest;
     onChanged({
       status: result.data.status,
       roomStatus: result.data.roomStatus,
       total: result.data.total,
       checkOut: result.data.checkOut,
       nights: result.data.nights,
+      ...(saved
+        ? {
+            guestName: guestDisplay(saved.firstName, saved.lastName),
+            guestFirstName: saved.firstName,
+            guestLastName: saved.lastName,
+            email: saved.email,
+            phone: saved.phone,
+            country: saved.country,
+          }
+        : {}),
     });
     if (webRequest && result.data.status === "CONFIRMED") playPmsSound(CONFIRM_NOTIFICATION_SOUND);
     return true;
@@ -128,26 +176,114 @@ export function LifecycleActions({
     setBusy(null);
   }
 
+  function beginCheckIn() {
+    if (blocked) return;
+    if (checkInGuestComplete(guest)) {
+      setConfirm("check-in");
+      return;
+    }
+    setFirstName(guest.firstName);
+    setLastName(guest.lastName);
+    setEmail(guest.email ?? "");
+    setPhone(guest.phone ?? "");
+    setCountry(guest.country ?? "");
+    setGuestOpen(true);
+  }
+
+  const guestReady = checkInGuestComplete({ firstName, lastName, phone, country });
+  const guestDialog = (
+    <Dialog
+      open={guestOpen}
+      onOpenChange={setGuestOpen}
+      title="Dati ospite"
+      description="Controlla i dati prima del check-in. Nome, cognome, telefono e paese sono obbligatori."
+    >
+      <form
+        className="grid gap-4"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (!guestReady) return;
+          setPending(true);
+          const ok = await finish(
+            await checkInReservationAction(reservation.id, {
+              firstName,
+              lastName,
+              email,
+              phone,
+              country,
+            }),
+          );
+          if (ok) setGuestOpen(false);
+        }}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Nome">
+            <Input value={firstName} onChange={(event) => setFirstName(event.target.value)} required />
+          </Field>
+          <Field label="Cognome">
+            <Input value={lastName} onChange={(event) => setLastName(event.target.value)} required />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Email">
+            <Input type="text" inputMode="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </Field>
+          <Field label="Telefono">
+            <Input value={phone} onChange={(event) => setPhone(event.target.value)} required />
+          </Field>
+        </div>
+        <Field label="Paese">
+          <Input value={country} onChange={(event) => setCountry(event.target.value)} required placeholder="Es. IT" />
+        </Field>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => setGuestOpen(false)}>
+            Annulla
+          </Button>
+          <Button type="submit" pending={pending} disabled={!guestReady}>
+            Conferma check-in
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+
   if (density === "primary") {
     if (!primaryAllowed || !primary) return null;
     const blockedIn = primary === "check-in" && Boolean(blocked);
     return (
+      <>
       <Button
         size="sm"
         className="h-7 px-2.5 text-[11px]"
         pending={busy === primary}
         pendingLabel="Attendi…"
         disabled={pending || blockedIn}
-        title={blockedIn ? blocked ?? undefined : quickTitle(primary)}
+        title={
+          blockedIn
+            ? blocked ?? undefined
+            : primary === "check-in" && !checkInGuestComplete(guest)
+              ? "Completa i dati ospite"
+              : quickTitle(primary)
+        }
         aria-label={`${label(primary, false)} ${reservation.code}`}
         onClick={() => {
           if (primary === "confirm") void runStatus("CONFIRMED", primary);
-          else if (primary === "check-in") void runStatus("CHECKED_IN", primary);
+          else if (primary === "check-in") beginCheckIn();
           else void runStatus("CHECKED_OUT", primary);
         }}
       >
         {label(primary, false)}
       </Button>
+      <ConfirmDialog
+        open={confirm === "check-in"}
+        onOpenChange={(open) => !open && setConfirm(null)}
+        title="Registrare il check-in?"
+        description={`Check-in di ${reservation.code} in camera ${reservation.roomNumber}. I dati ospite sono già completi.`}
+        confirmLabel="Conferma"
+        onConfirm={() => runStatus("CHECKED_IN")}
+      />
+      {guestDialog}
+      </>
     );
   }
 
@@ -180,7 +316,7 @@ export function LifecycleActions({
             if (action === "modify") onModify?.();
             else if (action === "confirm") void runStatus("CONFIRMED", action);
             else if (action === "option") void runStatus("OPTION", action);
-            else if (action === "check-in") setConfirm("check-in");
+            else if (action === "check-in") beginCheckIn();
             else if (action === "check-out") setConfirm("check-out");
             else if (action === "no-show") setConfirm("no-show");
             else if (action === "cancel") {
@@ -222,7 +358,7 @@ export function LifecycleActions({
               : `La camera ${reservation.roomNumber} passerà a da pulire e verrà creato un compito di housekeeping.`
             : confirm === "no-show"
               ? `${reservation.code} non è arrivato. La camera torna subito in vendita.`
-              : `Check-in di ${reservation.code} in camera ${reservation.roomNumber}.`
+              : `Check-in di ${reservation.code} in camera ${reservation.roomNumber}. I dati ospite sono già completi.`
         }
         confirmLabel={confirm === "no-show" ? "Segna no-show" : "Conferma"}
         danger={confirm === "no-show"}
@@ -232,6 +368,7 @@ export function LifecycleActions({
           if (confirm === "no-show") return runStatus("NO_SHOW");
         }}
       />
+      {guestDialog}
 
       <Dialog
         open={cancelOpen}

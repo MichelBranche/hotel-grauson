@@ -56,6 +56,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
     ratePlanId: reservation.ratePlanId,
     email: reservation.guest.email,
     phone: reservation.guest.phone,
+    country: reservation.guest.country,
     adults: reservation.adults,
     children: reservation.children,
     checkIn: toISODate(reservation.checkIn),

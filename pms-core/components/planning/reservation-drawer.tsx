@@ -1,7 +1,7 @@
 "use client";
 
 import type { RoomStatus } from "@prisma/client";
-import { BedDouble, CalendarDays, Mail, Phone, Users } from "lucide-react";
+import { BedDouble, CalendarDays, Globe, Mail, Phone, Users } from "lucide-react";
 import Link from "next/link";
 
 import { LifecycleActions, type DeskPermissions, type StayPatch } from "@pms-core/components/reservations/lifecycle-actions";
@@ -64,6 +64,9 @@ export function ReservationDrawer({
         <div className="flex items-center gap-3 text-[var(--pms-muted)]">
           <Phone className="size-4" /> {reservation.phone ?? "—"}
         </div>
+        <div className="flex items-center gap-3 text-[var(--pms-muted)]">
+          <Globe className="size-4" /> {reservation.country ?? "Non indicato"}
+        </div>
         <div className="flex items-start gap-3">
           <CalendarDays className="mt-0.5 size-4 shrink-0 text-[var(--pms-muted)]" />
           <p className="min-w-0">
@@ -105,6 +108,13 @@ export function ReservationDrawer({
             checkIn: reservation.checkIn,
             checkOut: reservation.checkOut,
             balance: reservation.total,
+          }}
+          guest={{
+            firstName: reservation.guestFirstName,
+            lastName: reservation.guestLastName,
+            email: reservation.email,
+            phone: reservation.phone,
+            country: reservation.country,
           }}
           extras={extras}
           permissions={permissions}

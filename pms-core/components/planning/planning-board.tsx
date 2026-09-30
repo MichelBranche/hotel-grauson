@@ -132,6 +132,13 @@ function Block({
               checkOut: reservation.checkOut,
               balance: reservation.total,
             }}
+            guest={{
+              firstName: reservation.guestFirstName,
+              lastName: reservation.guestLastName,
+              email: reservation.email,
+              phone: reservation.phone,
+              country: reservation.country,
+            }}
             extras={[]}
             permissions={permissions}
             businessToday={businessToday}
@@ -333,7 +340,23 @@ export function PlanningBoard({
       }),
       reservations: current.reservations.map((item) =>
         item.id === id
-          ? { ...item, status: patch.status, total: patch.total, checkOut: patch.checkOut, nights: patch.nights }
+          ? {
+              ...item,
+              status: patch.status,
+              total: patch.total,
+              checkOut: patch.checkOut,
+              nights: patch.nights,
+              ...(patch.guestName !== undefined
+                ? {
+                    guestName: patch.guestName,
+                    guestFirstName: patch.guestFirstName ?? item.guestFirstName,
+                    guestLastName: patch.guestLastName ?? item.guestLastName,
+                    email: patch.email !== undefined ? patch.email : item.email,
+                    phone: patch.phone !== undefined ? patch.phone : item.phone,
+                    country: patch.country !== undefined ? patch.country : item.country,
+                  }
+                : {}),
+            }
           : item,
       ),
     }));
