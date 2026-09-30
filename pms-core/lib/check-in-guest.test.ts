@@ -4,8 +4,10 @@ import { describe, it } from "node:test";
 import { documentAuditAfter } from "@pms-core/lib/check-in-audit";
 import {
   checkInGuestComplete,
+  companionGuestComplete,
   documentLast4,
   isItalyResidence,
+  parseCheckInCompanion,
   parseCheckInGuest,
   parseCheckInParty,
   type CheckInGuestFields,
@@ -77,8 +79,22 @@ describe("check-in guest", () => {
     });
   });
 
-  it("refuses more companions than the room count", () => {
-    assert.throws(() => parseCheckInParty({ primary: person(), companions: [person({ firstName: "Grace" })], partySize: 1 }), /composizione della camera/);
+  it("asks companions only for name, sex, and residence", () => {
+    const light = {
+      firstName: "Grace",
+      lastName: "Hopper",
+      sex: "F",
+      residenceAddress: "Rue de la Paix 1",
+      residenceCity: "Lione",
+      residenceCountry: "Francia",
+    };
+    assert.equal(companionGuestComplete(light), true);
+    assert.equal(companionGuestComplete({ ...light, residenceCountry: "IT" }), false);
+    const parsed = parseCheckInCompanion(light);
+    assert.equal(parsed.residenceCountry, "FR");
+    assert.equal(parsed.dateOfBirth, null);
+    assert.equal(parsed.documentNumber, null);
+    assert.throws(() => parseCheckInParty({ primary: person(), companions: [], partySize: 2 }), /tutti gli ospiti/);
   });
 
   it("records a short document reference, not the full number", () => {

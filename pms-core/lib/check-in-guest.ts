@@ -1,3 +1,4 @@
+import { normalizeCountry } from "@pms-core/data/countries";
 import { toISODate } from "@pms-core/lib/dates";
 import { DomainError } from "@pms-core/lib/errors";
 
@@ -87,6 +88,29 @@ export type CheckInPerson = {
   documentExpiresOn: string | null;
 };
 
+export type CheckInCompanionRecord = {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  sex: GuestSex;
+  dateOfBirth: string | null;
+  birthPlace: string | null;
+  citizenship: string | null;
+  email: string | null;
+  phone: string | null;
+  residenceAddress: string;
+  residencePostalCode: string | null;
+  residenceCity: string;
+  residenceProvince: string | null;
+  residenceCountry: string;
+  documentType: DocumentType | null;
+  documentNumber: string | null;
+  documentAuthority: string | null;
+  documentIssuedOn: string | null;
+  documentCountry: string | null;
+  documentExpiresOn: string | null;
+};
+
 function filled(value: string | null | undefined) {
   return Boolean(value?.trim());
 }
@@ -146,7 +170,7 @@ function knownSex(value: string | null | undefined): GuestSex | null {
   return found ? found.value : null;
 }
 
-/** Same required set for the group leader and for every other guest. Phone and email never block. */
+/** Capogruppo: full anagrafica, residence, and document. Phone and email never block. */
 export function checkInGuestComplete(guest: CheckInGuestFields) {
   if (!filled(guest.firstName) || !filled(guest.lastName) || !knownSex(guest.sex)) return false;
   const birth = calendarDate(guest.dateOfBirth);
@@ -162,8 +186,15 @@ export function checkInGuestComplete(guest: CheckInGuestFields) {
   return true;
 }
 
+/** Companion in the room: name, sex, and residence. Other anagrafica and the document are optional. */
 export function companionGuestComplete(guest: CheckInGuestFields) {
-  return checkInGuestComplete(guest);
+  if (!filled(guest.firstName) || !filled(guest.lastName) || !knownSex(guest.sex)) return false;
+  if (!filled(guest.residenceAddress) || !filled(guest.residenceCity) || !filled(guest.residenceCountry)) return false;
+  if (isItalyResidence(guest.residenceCountry) && (!filled(guest.residencePostalCode) || !filled(guest.residenceProvince))) return false;
+  if (guest.dateOfBirth && !calendarDate(guest.dateOfBirth)) return false;
+  if (guest.documentExpiresOn && !calendarDate(guest.documentExpiresOn)) return false;
+  if (guest.documentIssuedOn && !calendarDate(guest.documentIssuedOn)) return false;
+  return true;
 }
 
 export function checkInCompanionBlank(guest: CheckInGuestFields) {
@@ -209,18 +240,18 @@ function parseCheckInPerson(guest: CheckInGuestFields, id?: string): CheckInPers
   const lastName = cleanText(guest.lastName, 80);
   const sex = knownSex(guest.sex);
   const birthPlace = cleanText(guest.birthPlace, 120);
-  const citizenship = cleanText(guest.citizenship, 80);
+  const citizenship = normalizeCountry(cleanText(guest.citizenship, 80));
   const email = cleanText(guest.email, 120) || null;
   const phone = cleanText(guest.phone, 40) || null;
   const residenceAddress = cleanText(guest.residenceAddress, 160);
   const residenceCity = cleanText(guest.residenceCity, 80);
-  const residenceCountry = cleanText(guest.residenceCountry, 80);
+  const residenceCountry = normalizeCountry(cleanText(guest.residenceCountry, 80));
   const residencePostalCode = cleanText(guest.residencePostalCode, 12) || null;
   const residenceProvince = cleanText(guest.residenceProvince, 40) || null;
   const documentType = knownDocumentType(guest.documentType);
   const documentNumber = cleanText(guest.documentNumber, 64);
   const documentAuthority = cleanText(guest.documentAuthority, 120);
-  const documentCountry = cleanText(guest.documentCountry, 80);
+  const documentCountry = normalizeCountry(cleanText(guest.documentCountry, 80));
   if (!firstName || !lastName || !sex || !birthPlace || !citizenship) {
     throw new DomainError("Completa anagrafica dell'ospite prima del check-in.");
   }
@@ -272,15 +303,67 @@ export function parseCheckInGuest(guest: CheckInGuestFields): CheckInPerson {
   return parseCheckInPerson(guest);
 }
 
-export function parseCheckInCompanion(guest: CheckInGuestFields): CheckInPerson {
-  return parseCheckInPerson(guest, guest.id?.trim() || undefined);
+export function parseCheckInCompanion(guest: CheckInGuestFields): CheckInCompanionRecord {
+  const firstName = cleanText(guest.firstName, 80);
+  const lastName = cleanText(guest.lastName, 80);
+  const sex = knownSex(guest.sex);
+  const residenceAddress = cleanText(guest.residenceAddress, 160);
+  const residenceCity = cleanText(guest.residenceCity, 80);
+  const residenceCountry = normalizeCountry(cleanText(guest.residenceCountry, 80));
+  const residencePostalCode = cleanText(guest.residencePostalCode, 12) || null;
+  const residenceProvince = cleanText(guest.residenceProvince, 40) || null;
+  if (!firstName || !lastName || !sex) {
+    throw new DomainError("Completa nome, cognome e sesso degli altri ospiti prima del check-in.");
+  }
+  if (!residenceAddress || !residenceCity || !residenceCountry) {
+    throw new DomainError("Completa la residenza degli altri ospiti prima del check-in.");
+  }
+  if (isItalyResidence(residenceCountry) && (!residencePostalCode || !residenceProvince)) {
+    throw new DomainError("Per la residenza in Italia servono CAP e provincia.");
+  }
+  const dateOfBirth = optionalDate(guest.dateOfBirth, "Data di nascita non valida.");
+  if (dateOfBirth && dateOfBirth > new Date().toISOString().slice(0, 10)) throw new DomainError("Data di nascita non valida.");
+  const documentType = guest.documentType?.trim() ? knownDocumentType(guest.documentType) : null;
+  if (guest.documentType?.trim() && !documentType) throw new DomainError("Tipo documento non valido.");
+  const documentIssuedOn = optionalDate(guest.documentIssuedOn, "Data di emissione non valida.");
+  const documentExpiresOn = optionalDate(guest.documentExpiresOn, "Data di scadenza non valida.");
+  if (documentExpiresOn && documentIssuedOn && documentIssuedOn > documentExpiresOn) {
+    throw new DomainError("Date del documento non coerenti.");
+  }
+  return {
+    id: guest.id?.trim() || undefined,
+    firstName,
+    lastName,
+    sex,
+    dateOfBirth,
+    birthPlace: cleanText(guest.birthPlace, 120) || null,
+    citizenship: normalizeCountry(cleanText(guest.citizenship, 80)) || null,
+    email: cleanText(guest.email, 120) || null,
+    phone: cleanText(guest.phone, 40) || null,
+    residenceAddress,
+    residencePostalCode,
+    residenceCity,
+    residenceProvince,
+    residenceCountry,
+    documentType,
+    documentNumber: cleanText(guest.documentNumber, 64) || null,
+    documentAuthority: cleanText(guest.documentAuthority, 120) || null,
+    documentIssuedOn,
+    documentCountry: normalizeCountry(cleanText(guest.documentCountry, 80)) || null,
+    documentExpiresOn,
+  };
+}
+
+function optionalDate(value: string | Date | null | undefined, message: string) {
+  if (!value || (typeof value === "string" && !value.trim())) return null;
+  return requireDate(value, message);
 }
 
 export function parseCheckInParty(input: { primary: CheckInGuestFields; companions: CheckInGuestFields[]; partySize: number }) {
   const primary = parseCheckInGuest(input.primary);
   const limit = Math.max(0, input.partySize - 1);
-  if (input.companions.length > limit) {
-    throw new DomainError("Gli ospiti indicati superano la composizione della camera.");
+  if (input.companions.length !== limit) {
+    throw new DomainError("Compila tutti gli ospiti della camera.");
   }
   return { primary, companions: input.companions.map((guest) => parseCheckInCompanion(guest)) };
 }
