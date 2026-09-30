@@ -273,9 +273,16 @@ export function LifecycleActions({
         title={confirm === "check-out" ? "Registrare il check-out?" : confirm === "no-show" ? "Segnare no-show?" : "Registrare il check-in?"}
         description={
           confirm === "check-out"
-            ? departure.shortened
-              ? `Check-out anticipato: la partenza diventa il ${formatShort(departure.checkOut)}. Il totale di ${formatMoneyExact(reservation.total)} non cambia e le notti restanti tornano in vendita. La camera ${reservation.roomNumber} sarà da pulire.`
-              : `La camera ${reservation.roomNumber} passerà a da pulire e verrà creato un compito di housekeeping.`
+            ? [
+                departure.shortened
+                  ? `Check-out anticipato: la partenza diventa il ${formatShort(departure.checkOut)}. Il totale di ${formatMoneyExact(reservation.total)} non cambia e le notti restanti tornano in vendita. La camera ${reservation.roomNumber} sarà da pulire.`
+                  : `La camera ${reservation.roomNumber} passerà a da pulire e verrà creato un compito di housekeeping.`,
+                reservation.balance > 0
+                  ? `Resta un saldo non pagato di ${formatMoneyExact(reservation.balance)}. Il check-out non lo registra come pagato.`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" ")
             : confirm === "no-show"
               ? `${reservation.code} non è arrivato. La camera torna subito in vendita.`
               : `Check-in di ${reservation.code} in camera ${reservation.roomNumber}.`

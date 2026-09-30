@@ -68,7 +68,7 @@ export const planningService = {
           notes: reservation.notes,
           payAtProperty: isPayAtPropertyRequest(reservation),
           vip: reservation.vip,
-          color: planningColor(reservation.id),
+          color: planningColor(reservation.status),
         }),
       ),
       blocks: blocks.map((block) => ({
