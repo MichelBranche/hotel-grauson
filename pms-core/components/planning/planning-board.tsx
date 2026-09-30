@@ -210,6 +210,7 @@ export function PlanningBoard({
   const [statusPending, setStatusPending] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const loadId = useRef(0);
+  const revision = useRef(0);
   const moving = useRef(new Set<string>());
   const pendingFocus = useRef<{ id: string; anchor: string } | null>(null);
   const urlFocusDone = useRef(false);
@@ -271,8 +272,9 @@ export function PlanningBoard({
     const token = ++loadId.current;
     const focus = pendingFocus.current;
     let cancelled = false;
+    const seen = revision.current;
     void getPlanningAction(from, to).then((result) => {
-      if (cancelled || token !== loadId.current || !result.ok) return;
+      if (cancelled || token !== loadId.current || !result.ok || revision.current !== seen) return;
       setData(result.data);
       if (!focus || focus.anchor !== from) return;
       pendingFocus.current = null;
@@ -288,18 +290,36 @@ export function PlanningBoard({
     };
   }, [from, to]);
 
+  useEffect(() => {
+    const onLive = (event: Event) => {
+      const topic = (event as CustomEvent<{ topic?: string }>).detail?.topic;
+      if (topic !== "reservation") return;
+      const token = ++loadId.current;
+      const seen = revision.current;
+      void getPlanningAction(from, to).then((result) => {
+        if (token !== loadId.current || !result.ok || revision.current !== seen) return;
+        setData(result.data);
+      });
+    };
+    window.addEventListener("pms:live", onLive);
+    return () => window.removeEventListener("pms:live", onLive);
+  }, [from, to]);
+
   const days = eachISODate(from, to);
   const dayWidth = widths[view];
   const selected = data.reservations.find((item) => item.id === selectedId) ?? null;
 
   function refreshBoard() {
     const token = ++loadId.current;
+    const seen = revision.current;
     return getPlanningAction(from, to).then((result) => {
-      if (token === loadId.current && result.ok) setData(result.data);
+      if (token !== loadId.current || !result.ok || revision.current !== seen) return;
+      setData(result.data);
     });
   }
 
   function applyStayPatch(id: string, patch: StayPatch) {
+    revision.current += 1;
     setData((current) => ({
       ...current,
       rooms: current.rooms.map((room) => {
@@ -319,6 +339,7 @@ export function PlanningBoard({
       applyStayPatch(selectedId, patch);
       return;
     }
+    revision.current += 1;
     void refreshBoard();
   }
 
@@ -334,6 +355,7 @@ export function PlanningBoard({
 
   async function applyMove(id: string, next: { roomId: string; checkIn: string; checkOut: string }, previous: { roomId: string; checkIn: string; checkOut: string }) {
     if (moving.current.has(id)) return;
+    revision.current += 1;
     if (next.roomId === previous.roomId && next.checkIn === previous.checkIn && next.checkOut === previous.checkOut) return;
     moving.current.add(id);
     setData((current) => ({
@@ -417,6 +439,7 @@ export function PlanningBoard({
   async function setRoomStatus(roomId: string, status: RoomStatus) {
     const room = data.rooms.find((item) => item.id === roomId);
     if (!room || room.status === status || statusPending) return;
+    revision.current += 1;
     const previous = room.status;
     setStatusMenu(null);
     setStatusPending(roomId);
@@ -694,6 +717,7 @@ export function PlanningBoard({
         onOpenChange={setWizardOpen}
         extras={extras}
         onCreated={(stay) => {
+          revision.current += 1;
           setData((current) => ({
             ...current,
             reservations: current.reservations.some((item) => item.id === stay.id)

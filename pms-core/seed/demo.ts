@@ -28,6 +28,7 @@ async function main() {
   await prisma.channelConnection.deleteMany();
   await prisma.channel.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.realtimeSignal.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.housekeepingTask.deleteMany();
   await prisma.payment.deleteMany();

@@ -1,9 +1,11 @@
 "use client";
 
-import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search, Volume2, VolumeX } from "lucide-react";
+import { useSyncExternalStore } from "react";
 
 import type { SessionUser } from "@pms-core/types";
 import { logoutAction } from "@pms-core/actions/auth";
+import { readSoundEnabled, subscribeSound, writeSoundEnabled } from "@pms-core/lib/pms-sound";
 
 export function Topbar({
   user,
@@ -24,6 +26,8 @@ export function Topbar({
 }) {
   const SidebarIcon = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose;
   const sidebarLabel = sidebarCollapsed ? "Espandi menu" : "Comprimi menu";
+  const soundOn = useSyncExternalStore(subscribeSound, readSoundEnabled, () => true);
+  const SoundIcon = soundOn ? Volume2 : VolumeX;
   return (
     <header className="flex h-16 items-center gap-3 px-4 md:px-6">
       <button
@@ -60,14 +64,23 @@ export function Topbar({
 
       <button
         type="button"
+        onClick={() => writeSoundEnabled(!soundOn)}
+        className="pms-press grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]"
+        aria-pressed={soundOn}
+        aria-label={soundOn ? "Disattiva suono notifiche" : "Attiva suono notifiche"}
+        title={soundOn ? "Suono attivo" : "Suono disattivo"}
+      >
+        <SoundIcon className="size-4" />
+      </button>
+
+      <button
+        type="button"
         onClick={onNotifications}
         className="pms-press relative grid size-10 place-items-center rounded-full hover:bg-[var(--pms-surface-dark)]"
         aria-label="Notifiche"
       >
         <Bell className="size-4" />
-        {unread > 0 ? (
-          <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[var(--pms-alpine)]" />
-        ) : null}
+        {unread > 0 ? <span className="pms-bell-unread absolute top-1.5 right-1.5 size-2 rounded-full" /> : null}
       </button>
 
       <div className="flex items-center gap-2">

@@ -111,6 +111,7 @@ model Property {
   roomBlocks       RoomBlock[]
   housekeepingTasks HousekeepingTask[]
   notifications    Notification[]
+  realtimeSignals  RealtimeSignal[]
   auditLogs        AuditLog[]
   channelConnections ChannelConnection[]
 }
@@ -479,6 +480,22 @@ model Notification {
   createdAt  DateTime @default(now())
 
   @@index([propertyId, read, createdAt])
+}
+
+/// Property-scoped wake-up row for the PMS live stream. The stream polls this
+/// table because the transaction pooler cannot LISTEN/NOTIFY.
+model RealtimeSignal {
+  id               String   @id @default(cuid())
+  propertyId       String
+  property         Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  topic            String
+  action           String
+  entityId         String?
+  notificationType String?
+  title            String?
+  createdAt        DateTime @default(now())
+
+  @@index([propertyId, createdAt])
 }
 
 model AuditLog {

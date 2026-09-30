@@ -1,6 +1,8 @@
 import { prisma } from "@pms-core/database/client";
+import { propertyConfig } from "@pms-core/config/property";
 import { DomainError } from "@pms-core/lib/errors";
 import { addDaysISO, eachISODate, toDate, toISODate } from "@pms-core/lib/dates";
+import { parseJson } from "@pms-core/lib/utils";
 import {
   dailyRateKey,
   describeNight,
@@ -17,12 +19,13 @@ import {
  * Loads everything needed to price nights from `from` to `to` (inclusive, so the
  * departure day's closed-to-departure rule is visible).
  */
-export async function loadPricingContext(propertyId: string, from: string, to: string): Promise<PricingContext> {
+async function loadStayPricing(propertyId: string, from: string, to: string) {
   const nightStart = toDate(from);
   const nightEnd = toDate(addDaysISO(to, 1));
   const property = await prisma.property.findUnique({
     where: { id: propertyId },
     select: {
+      settings: true,
       roomTypes: { select: { id: true, name: true, basePrice: true } },
       ratePlans: {
         where: { active: true },
@@ -47,7 +50,7 @@ export async function loadPricingContext(propertyId: string, from: string, to: s
   const inventory = property.inventory;
   const seasons = property.rateSeasons;
 
-  return {
+  const context: PricingContext = {
     roomTypes: new Map(roomTypes.map((type) => [type.id, type])),
     plans: plans.map(toPricingPlan),
     planPrices: new Map(planPrices.map((row) => [planPriceKey(row.ratePlanId, row.roomTypeId), row.basePrice])),
@@ -73,6 +76,12 @@ export async function loadPricingContext(propertyId: string, from: string, to: s
       prices: Object.fromEntries(season.prices.map((price) => [price.roomTypeId, price.price])),
     })),
   };
+  const taxRate = parseJson<{ taxRate?: number }>(property.settings, {}).taxRate ?? propertyConfig.settings.taxRate;
+  return { context, taxRate };
+}
+
+export async function loadPricingContext(propertyId: string, from: string, to: string): Promise<PricingContext> {
+  return (await loadStayPricing(propertyId, from, to)).context;
 }
 
 function toPricingPlan(plan: {
@@ -111,8 +120,8 @@ export const pricingService = {
     ratePlanId?: string;
     checkIn: string;
     checkOut: string;
-  }): Promise<StayQuote & { plan: PricingPlan }> {
-    const ctx = await loadPricingContext(input.propertyId, input.checkIn, input.checkOut);
+  }): Promise<StayQuote & { plan: PricingPlan; taxRate: number }> {
+    const { context: ctx, taxRate } = await loadStayPricing(input.propertyId, input.checkIn, input.checkOut);
     const candidates = input.ratePlanId ? ctx.plans.filter((plan) => plan.id === input.ratePlanId) : ctx.plans;
     if (input.ratePlanId && !candidates.length) {
       throw new DomainError("La tariffa selezionata non è attiva.");
@@ -123,7 +132,7 @@ export const pricingService = {
     let firstRefusal: string | null = null;
     for (const plan of candidates) {
       const result = evaluateStay(ctx, input.roomTypeId, plan, input.checkIn, input.checkOut);
-      if (result.ok) return { ...result, plan };
+      if (result.ok) return { ...result, plan, taxRate };
       firstRefusal ??= result.reason;
     }
     throw new DomainError(firstRefusal ?? "Soggiorno non disponibile.");

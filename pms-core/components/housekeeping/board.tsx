@@ -26,7 +26,13 @@ type Row = {
 };
 
 export function HousekeepingBoard({ rooms }: { rooms: Row[] }) {
+  const incoming = rooms.map((room) => `${room.id}:${room.status}`).join("|");
+  const [seen, setSeen] = useState(incoming);
   const [rows, setRows] = useState(rooms);
+  if (incoming !== seen) {
+    setSeen(incoming);
+    setRows(rooms);
+  }
   const { pending, run } = useActionPending();
 
   return (
