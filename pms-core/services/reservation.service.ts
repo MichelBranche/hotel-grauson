@@ -24,6 +24,7 @@ import { availabilityService } from "@pms-core/services/availability.service";
 import { auditService } from "@pms-core/services/audit.service";
 import { pricingService } from "@pms-core/services/pricing.service";
 import { notificationService } from "@pms-core/services/notification.service";
+import { publishRealtime } from "@pms-core/realtime/publish";
 
 type Actor = { id?: string | null; name?: string; role?: UserRole };
 
@@ -121,8 +122,7 @@ async function quoteStay(input: {
     }
   }
 
-  const { taxRate } = await loadTaxRate(input.propertyId);
-  const priced = repriceStay(stay.total, stay.nights.length, lines, taxRate);
+  const priced = repriceStay(stay.total, stay.nights.length, lines, stay.taxRate);
   return { ...priced, ratePlanId: stay.plan.id };
 }
 
@@ -351,6 +351,12 @@ export const reservationService = {
         entityId: reservation.created.id,
       }),
     );
+    publishRealtime({
+      propertyId: draft.propertyId,
+      topic: "reservation",
+      action: "created",
+      entityId: reservation.created.id,
+    });
 
     return {
       id: reservation.created.id,
@@ -469,6 +475,7 @@ export const reservationService = {
         entityId: id,
       }),
     );
+    publishRealtime({ propertyId: current.propertyId, topic: "reservation", action: "updated", entityId: id });
 
     const guestFirstName = input.guest?.firstName.trim() || current.guest.firstName;
     const guestLastName = input.guest?.lastName.trim() || current.guest.lastName;
@@ -595,6 +602,12 @@ export const reservationService = {
         }),
       );
     }
+    publishRealtime({
+      propertyId: current.propertyId,
+      topic: "reservation",
+      action: status.toLowerCase(),
+      entityId: id,
+    });
 
     const message =
       status === "CHECKED_IN"
@@ -632,7 +645,10 @@ export const reservationService = {
   },
 
   async updateNotes(id: string, notes: string, actor: Actor = {}) {
-    const current = await reservationRepo.findById(id);
+    const current = await prisma.reservation.findUnique({
+      where: { id },
+      select: { id: true, propertyId: true, notes: true },
+    });
     if (!current) throw new DomainError("Prenotazione non trovata.");
     await prisma.reservation.update({ where: { id }, data: { notes } });
     await auditService.record({
@@ -644,7 +660,8 @@ export const reservationService = {
       before: { notes: current.notes },
       after: { notes },
     });
-    return reservationRepo.findById(id);
+    publishRealtime({ propertyId: current.propertyId, topic: "reservation", action: "updated", entityId: id });
+    return { id };
   },
 
   async addExtra(id: string, extraId: string, quantity: number, actor: Actor = {}) {
@@ -690,7 +707,8 @@ export const reservationService = {
         after: { extra: extra.name, quantity, total: added.total, reservationTotal: priced.total },
       });
     });
-    return reservationRepo.findById(id);
+    publishRealtime({ propertyId: current.propertyId, topic: "reservation", action: "updated", entityId: id });
+    return { id };
   },
 
   async addPayment(
@@ -698,7 +716,10 @@ export const reservationService = {
     input: { amount: number; method: "CASH" | "CARD" | "BANK_TRANSFER" | "ONLINE" | "OTHER"; note?: string },
     actor: Actor = {},
   ) {
-    const current = await reservationRepo.findById(id);
+    const current = await prisma.reservation.findUnique({
+      where: { id },
+      select: { id: true, propertyId: true, code: true },
+    });
     if (!current) throw new DomainError("Prenotazione non trovata.");
     if (input.amount <= 0) throw new DomainError("L'importo del pagamento deve essere maggiore di zero.");
     const payment = await prisma.payment.create({
@@ -726,6 +747,7 @@ export const reservationService = {
       entity: "Reservation",
       entityId: id,
     });
-    return reservationRepo.findById(id);
+    publishRealtime({ propertyId: current.propertyId, topic: "reservation", action: "payment", entityId: id });
+    return { id };
   },
 };

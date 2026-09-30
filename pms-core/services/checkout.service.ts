@@ -11,6 +11,7 @@ import { appBaseUrl, stripeClient } from "@pms-core/lib/stripe";
 import { auditService } from "@pms-core/services/audit.service";
 import { notificationService } from "@pms-core/services/notification.service";
 import { reservationService } from "@pms-core/services/reservation.service";
+import { publishRealtime } from "@pms-core/realtime/publish";
 
 function paymentIntentId(session: Stripe.Checkout.Session) {
   if (!session.payment_intent) return null;
@@ -229,10 +230,18 @@ export async function completeCheckoutSession(session: Stripe.Checkout.Session) 
 
   if (payment.status === "COMPLETED") {
     if (reservation.status === "OPTION") {
-      await prisma.reservation.updateMany({
+      const confirmed = await prisma.reservation.updateMany({
         where: { id: reservation.id, status: "OPTION" },
         data: { status: "CONFIRMED" },
       });
+      if (confirmed.count > 0) {
+        publishRealtime({
+          propertyId: reservation.propertyId,
+          topic: "reservation",
+          action: "confirmed",
+          entityId: reservation.id,
+        });
+      }
     }
     return { confirmed: true, pending: false, code: reservation.code };
   }
@@ -262,6 +271,15 @@ export async function completeCheckoutSession(session: Stripe.Checkout.Session) 
     });
     return true;
   });
+
+  if (completed && reservation.status === "OPTION") {
+    publishRealtime({
+      propertyId: reservation.propertyId,
+      topic: "reservation",
+      action: "confirmed",
+      entityId: reservation.id,
+    });
+  }
 
   return { confirmed: completed, pending: !completed, code: reservation.code };
 }

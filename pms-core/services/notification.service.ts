@@ -1,4 +1,5 @@
 import { prisma } from "@pms-core/database/client";
+import { publishRealtime } from "@pms-core/realtime/publish";
 
 type NotifyInput = {
   propertyId: string;
@@ -11,7 +12,16 @@ type NotifyInput = {
 
 export const notificationService = {
   async create(input: NotifyInput) {
-    return prisma.notification.create({ data: input });
+    const row = await prisma.notification.create({ data: input });
+    publishRealtime({
+      propertyId: input.propertyId,
+      topic: "notification",
+      action: "created",
+      entityId: input.entityId,
+      notificationType: input.type,
+      title: input.title,
+    });
+    return row;
   },
 
   list(propertyId: string, unreadOnly = false) {

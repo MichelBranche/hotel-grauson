@@ -16,6 +16,7 @@ import { Button } from "@pms-core/components/ui/button";
 import { ConfirmDialog, Dialog } from "@pms-core/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@pms-core/components/ui/input";
 import { formatShort, todayISO } from "@pms-core/lib/dates";
+import { CONFIRM_NOTIFICATION_SOUND, playPmsSound } from "@pms-core/lib/pms-sound";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import { actionsFor, checkInBlockMessage, earlyCheckout, primaryDeskAction, type DeskAction } from "@pms-core/lib/reservation-status";
 
@@ -116,6 +117,7 @@ export function LifecycleActions({
       checkOut: result.data.checkOut,
       nights: result.data.nights,
     });
+    if (webRequest && result.data.status === "CONFIRMED") playPmsSound(CONFIRM_NOTIFICATION_SOUND);
     return true;
   }
 

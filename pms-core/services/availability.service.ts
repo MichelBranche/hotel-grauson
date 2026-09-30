@@ -157,25 +157,27 @@ export const availabilityService = {
     if (guests > room.capacity) {
       throw new DomainError(`La camera ${room.number} accoglie al massimo ${room.capacity} ospiti.`);
     }
-    const block = await prisma.roomBlock.findFirst({
-      where: { roomId: room.id, ...blockOverlapWhere(input.checkIn, input.checkOut) },
-      orderBy: { startDate: "asc" },
-    });
+    const [block, conflicts] = await Promise.all([
+      prisma.roomBlock.findFirst({
+        where: { roomId: room.id, ...blockOverlapWhere(input.checkIn, input.checkOut) },
+        orderBy: { startDate: "asc" },
+      }),
+      prisma.reservation.findMany({
+        where: {
+          roomId: input.roomId,
+          status: { in: occupyingStatuses },
+          checkIn: { lt: toDate(input.checkOut) },
+          checkOut: { gt: toDate(input.checkIn) },
+          ...(input.excludeReservationId ? { id: { not: input.excludeReservationId } } : {}),
+        },
+        select: { checkIn: true, checkOut: true, guest: { select: { lastName: true } } },
+      }),
+    ]);
     if (block) {
       throw new DomainError(
         `La camera ${room.number} è chiusa dal ${formatShort(toISODate(block.startDate))} al ${formatShort(toISODate(block.endDate))}${block.reason ? ` (${block.reason})` : ""}.`,
       );
     }
-    const conflicts = await prisma.reservation.findMany({
-      where: {
-        roomId: input.roomId,
-        status: { in: occupyingStatuses },
-        checkIn: { lt: toDate(input.checkOut) },
-        checkOut: { gt: toDate(input.checkIn) },
-        ...(input.excludeReservationId ? { id: { not: input.excludeReservationId } } : {}),
-      },
-      select: { checkIn: true, checkOut: true, guest: { select: { lastName: true } } },
-    });
     if (conflicts[0]) {
       const conflict = conflicts[0];
       throw new DomainError(
