@@ -1,3 +1,4 @@
+import { toISODate } from "@pms-core/lib/dates";
 import { DomainError } from "@pms-core/lib/errors";
 
 /**
@@ -16,6 +17,21 @@ export const DOCUMENT_TYPES = [
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number]["value"];
 
+export const SEX_OPTIONS = [
+  { value: "M", label: "Maschio" },
+  { value: "F", label: "Femmina" },
+  { value: "X", label: "Altro" },
+] as const;
+
+export type GuestSex = (typeof SEX_OPTIONS)[number]["value"];
+
+export const GUEST_ROLES = [
+  { value: "LEADER", label: "Capogruppo" },
+  { value: "GUEST", label: "Ospite" },
+] as const;
+
+const EXPIRY_REQUIRED = new Set<DocumentType>(["CI", "PASSPORT", "LICENSE"]);
+
 export type StayGuestSummary = {
   id: string;
   firstName: string;
@@ -29,36 +45,46 @@ export type CheckInGuestFields = {
   id?: string | null;
   firstName?: string | null;
   lastName?: string | null;
+  sex?: string | null;
+  dateOfBirth?: string | Date | null;
+  birthPlace?: string | null;
+  citizenship?: string | null;
   email?: string | null;
   phone?: string | null;
-  country?: string | null;
+  residenceAddress?: string | null;
+  residencePostalCode?: string | null;
+  residenceCity?: string | null;
+  residenceProvince?: string | null;
+  residenceCountry?: string | null;
   documentType?: string | null;
   documentNumber?: string | null;
+  documentAuthority?: string | null;
+  documentIssuedOn?: string | Date | null;
   documentCountry?: string | null;
-  documentExpiresOn?: string | null;
+  documentExpiresOn?: string | Date | null;
 };
 
-export type CheckInDocument = {
-  documentType: DocumentType;
-  documentNumber: string;
-  documentCountry: string | null;
-  documentExpiresOn: string | null;
-};
-
-export type CheckInGuest = CheckInDocument & {
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string;
-  country: string;
-};
-
-export type CheckInCompanion = CheckInDocument & {
+export type CheckInPerson = {
   id?: string;
   firstName: string;
   lastName: string;
+  sex: GuestSex;
+  dateOfBirth: string;
+  birthPlace: string;
+  citizenship: string;
+  email: string | null;
   phone: string | null;
-  country: string;
+  residenceAddress: string;
+  residencePostalCode: string | null;
+  residenceCity: string;
+  residenceProvince: string | null;
+  residenceCountry: string;
+  documentType: DocumentType;
+  documentNumber: string;
+  documentAuthority: string;
+  documentIssuedOn: string;
+  documentCountry: string;
+  documentExpiresOn: string | null;
 };
 
 function filled(value: string | null | undefined) {
@@ -85,25 +111,85 @@ export function maskedDocument(last4: string | null | undefined) {
   return last4 ? `•••• ${last4}` : "••••";
 }
 
-export function primaryIdentityReady(guest: CheckInGuestFields) {
-  return filled(guest.firstName) && filled(guest.lastName) && filled(guest.phone) && filled(guest.country);
+export function sexLabel(value: string | null | undefined) {
+  return SEX_OPTIONS.find((item) => item.value === value)?.label ?? "Non indicato";
 }
 
-export function companionIdentityReady(guest: CheckInGuestFields) {
-  return filled(guest.firstName) && filled(guest.lastName) && filled(guest.country);
+export function roleLabel(role: string | null | undefined, isPrimary = false) {
+  if (isPrimary || role === "LEADER") return "Capogruppo";
+  return "Ospite";
 }
 
-export function documentReady(guest: CheckInGuestFields) {
-  return knownDocumentType(guest.documentType) !== null && filled(guest.documentNumber);
+/** IT, ITA and Italia count as Italy. CAP and province are then required. */
+export function isItalyResidence(country: string | null | undefined) {
+  const value = country?.trim().toLowerCase() ?? "";
+  return value === "it" || value === "ita" || value === "italia";
 }
 
-/** Primary guest can be checked in only with name, phone, country, and a document. */
+export function expiryRequired(type: string | null | undefined) {
+  const known = knownDocumentType(type);
+  return known !== null && EXPIRY_REQUIRED.has(known);
+}
+
+function calendarDate(value: string | Date | null | undefined) {
+  if (!value) return null;
+  const iso = value instanceof Date ? toISODate(value) : value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return iso;
+}
+
+function knownSex(value: string | null | undefined): GuestSex | null {
+  const found = SEX_OPTIONS.find((item) => item.value === value);
+  return found ? found.value : null;
+}
+
+/** Same required set for the group leader and for every other guest. Phone and email never block. */
 export function checkInGuestComplete(guest: CheckInGuestFields) {
-  return primaryIdentityReady(guest) && documentReady(guest);
+  if (!filled(guest.firstName) || !filled(guest.lastName) || !knownSex(guest.sex)) return false;
+  const birth = calendarDate(guest.dateOfBirth);
+  if (!birth || birth > new Date().toISOString().slice(0, 10)) return false;
+  if (!filled(guest.birthPlace) || !filled(guest.citizenship)) return false;
+  if (!filled(guest.residenceAddress) || !filled(guest.residenceCity) || !filled(guest.residenceCountry)) return false;
+  if (isItalyResidence(guest.residenceCountry) && (!filled(guest.residencePostalCode) || !filled(guest.residenceProvince))) return false;
+  const documentType = knownDocumentType(guest.documentType);
+  if (!documentType || !filled(guest.documentNumber) || !filled(guest.documentAuthority) || !filled(guest.documentCountry)) return false;
+  if (!calendarDate(guest.documentIssuedOn)) return false;
+  if (expiryRequired(documentType) && !calendarDate(guest.documentExpiresOn)) return false;
+  if (guest.documentExpiresOn && !calendarDate(guest.documentExpiresOn)) return false;
+  return true;
 }
 
 export function companionGuestComplete(guest: CheckInGuestFields) {
-  return companionIdentityReady(guest) && documentReady(guest);
+  return checkInGuestComplete(guest);
+}
+
+export function checkInCompanionBlank(guest: CheckInGuestFields) {
+  if (guest.id) return false;
+  const values = [
+    guest.firstName,
+    guest.lastName,
+    guest.sex,
+    typeof guest.dateOfBirth === "string" ? guest.dateOfBirth : "",
+    guest.birthPlace,
+    guest.citizenship,
+    guest.email,
+    guest.phone,
+    guest.residenceAddress,
+    guest.residencePostalCode,
+    guest.residenceCity,
+    guest.residenceProvince,
+    guest.residenceCountry,
+    guest.documentType,
+    guest.documentNumber,
+    guest.documentAuthority,
+    typeof guest.documentIssuedOn === "string" ? guest.documentIssuedOn : "",
+    guest.documentCountry,
+    typeof guest.documentExpiresOn === "string" ? guest.documentExpiresOn : "",
+  ];
+  return values.every((value) => !filled(value));
 }
 
 function cleanText(value: string | null | undefined, max: number) {
@@ -112,46 +198,82 @@ function cleanText(value: string | null | undefined, max: number) {
   return trimmed;
 }
 
-function parseDocument(guest: CheckInGuestFields): CheckInDocument {
+function requireDate(value: string | Date | null | undefined, message: string) {
+  const iso = calendarDate(typeof value === "string" ? value : value ?? null);
+  if (!iso) throw new DomainError(message);
+  return iso;
+}
+
+function parseCheckInPerson(guest: CheckInGuestFields, id?: string): CheckInPerson {
+  const firstName = cleanText(guest.firstName, 80);
+  const lastName = cleanText(guest.lastName, 80);
+  const sex = knownSex(guest.sex);
+  const birthPlace = cleanText(guest.birthPlace, 120);
+  const citizenship = cleanText(guest.citizenship, 80);
+  const email = cleanText(guest.email, 120) || null;
+  const phone = cleanText(guest.phone, 40) || null;
+  const residenceAddress = cleanText(guest.residenceAddress, 160);
+  const residenceCity = cleanText(guest.residenceCity, 80);
+  const residenceCountry = cleanText(guest.residenceCountry, 80);
+  const residencePostalCode = cleanText(guest.residencePostalCode, 12) || null;
+  const residenceProvince = cleanText(guest.residenceProvince, 40) || null;
   const documentType = knownDocumentType(guest.documentType);
   const documentNumber = cleanText(guest.documentNumber, 64);
-  const documentCountry = cleanText(guest.documentCountry, 80) || null;
-  const documentExpiresOn = guest.documentExpiresOn?.trim() || null;
-  if (!documentType || !documentNumber) {
-    throw new DomainError("Completa tipo e numero del documento prima del check-in.");
+  const documentAuthority = cleanText(guest.documentAuthority, 120);
+  const documentCountry = cleanText(guest.documentCountry, 80);
+  if (!firstName || !lastName || !sex || !birthPlace || !citizenship) {
+    throw new DomainError("Completa anagrafica dell'ospite prima del check-in.");
   }
-  if (documentExpiresOn) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(documentExpiresOn)) throw new DomainError("Data di scadenza non valida.");
-    const [year, month, day] = documentExpiresOn.split("-").map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-      throw new DomainError("Data di scadenza non valida.");
-    }
+  const dateOfBirth = requireDate(guest.dateOfBirth, "Data di nascita non valida.");
+  if (dateOfBirth > new Date().toISOString().slice(0, 10)) throw new DomainError("Data di nascita non valida.");
+  if (!residenceAddress || !residenceCity || !residenceCountry) {
+    throw new DomainError("Completa la residenza dell'ospite prima del check-in.");
   }
-  return { documentType, documentNumber, documentCountry, documentExpiresOn };
+  if (isItalyResidence(residenceCountry) && (!residencePostalCode || !residenceProvince)) {
+    throw new DomainError("Per la residenza in Italia servono CAP e provincia.");
+  }
+  if (!documentType || !documentNumber || !documentAuthority || !documentCountry) {
+    throw new DomainError("Completa il documento dell'ospite prima del check-in.");
+  }
+  const documentIssuedOn = requireDate(guest.documentIssuedOn, "Data di emissione non valida.");
+  const expiryRaw = typeof guest.documentExpiresOn === "string" ? guest.documentExpiresOn.trim() : guest.documentExpiresOn;
+  const documentExpiresOn = expiryRaw ? requireDate(expiryRaw, "Data di scadenza non valida.") : null;
+  if (expiryRequired(documentType) && !documentExpiresOn) {
+    throw new DomainError("Indica la scadenza del documento.");
+  }
+  if (documentExpiresOn && documentIssuedOn > documentExpiresOn) {
+    throw new DomainError("Date del documento non coerenti.");
+  }
+  return {
+    id,
+    firstName,
+    lastName,
+    sex,
+    dateOfBirth,
+    birthPlace,
+    citizenship,
+    email,
+    phone,
+    residenceAddress,
+    residencePostalCode,
+    residenceCity,
+    residenceProvince,
+    residenceCountry,
+    documentType,
+    documentNumber,
+    documentAuthority,
+    documentIssuedOn,
+    documentCountry,
+    documentExpiresOn,
+  };
 }
 
-export function parseCheckInGuest(guest: CheckInGuestFields): CheckInGuest {
-  const firstName = cleanText(guest.firstName, 80);
-  const lastName = cleanText(guest.lastName, 80);
-  const phone = cleanText(guest.phone, 40);
-  const country = cleanText(guest.country, 80);
-  const email = cleanText(guest.email, 120) || null;
-  if (!firstName || !lastName || !phone || !country) {
-    throw new DomainError("Completa nome, cognome, telefono e paese prima del check-in.");
-  }
-  return { firstName, lastName, email, phone, country, ...parseDocument(guest) };
+export function parseCheckInGuest(guest: CheckInGuestFields): CheckInPerson {
+  return parseCheckInPerson(guest);
 }
 
-export function parseCheckInCompanion(guest: CheckInGuestFields & { id?: string | null }): CheckInCompanion {
-  const firstName = cleanText(guest.firstName, 80);
-  const lastName = cleanText(guest.lastName, 80);
-  const phone = cleanText(guest.phone, 40) || null;
-  const country = cleanText(guest.country, 80);
-  if (!firstName || !lastName || !country) {
-    throw new DomainError("Completa nome, cognome e paese degli altri ospiti prima del check-in.");
-  }
-  return { id: guest.id?.trim() || undefined, firstName, lastName, phone, country, ...parseDocument(guest) };
+export function parseCheckInCompanion(guest: CheckInGuestFields): CheckInPerson {
+  return parseCheckInPerson(guest, guest.id?.trim() || undefined);
 }
 
 export function parseCheckInParty(input: { primary: CheckInGuestFields; companions: CheckInGuestFields[]; partySize: number }) {

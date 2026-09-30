@@ -326,7 +326,7 @@ export const reservationService = {
           extras: {
             create: quote.extras.map(({ extraId, quantity, unitPrice, total }) => ({ extraId, quantity, unitPrice, total })),
           },
-          guests: { create: { guestId: guest.id, isPrimary: true } },
+          guests: { create: { guestId: guest.id, isPrimary: true, role: "LEADER" } },
           payments: draft.payment
             ? {
                 create: {
@@ -598,6 +598,15 @@ export const reservationService = {
     await prisma.$transaction(async (tx) => {
       const next: StayGuestSummary[] = [];
       await tx.guest.update({ where: { id: current.guestId }, data: guestDocumentData(parsed.primary) });
+      const leader = await tx.reservationGuest.updateMany({
+        where: { reservationId: current.id, guestId: current.guestId },
+        data: { role: "LEADER", isPrimary: true },
+      });
+      if (leader.count === 0) {
+        await tx.reservationGuest.create({
+          data: { reservationId: current.id, guestId: current.guestId, isPrimary: true, role: "LEADER" },
+        });
+      }
       await auditGuestDocument(tx, current.propertyId, actor.id, current.guestId, parsed.primary.documentType, parsed.primary.documentNumber);
       next.push(summaryOf(current.guestId, parsed.primary, true));
       const keep = new Set<string>();
@@ -605,6 +614,10 @@ export const reservationService = {
         if (companion.id) {
           keep.add(companion.id);
           await tx.guest.update({ where: { id: companion.id }, data: guestDocumentData(companion) });
+          await tx.reservationGuest.updateMany({
+            where: { reservationId: current.id, guestId: companion.id },
+            data: { role: "GUEST", isPrimary: false },
+          });
           await auditGuestDocument(tx, current.propertyId, actor.id, companion.id, companion.documentType, companion.documentNumber);
           next.push(summaryOf(companion.id, companion, false));
           continue;
@@ -612,7 +625,9 @@ export const reservationService = {
         const created = await tx.guest.create({
           data: { propertyId: current.propertyId, ...guestDocumentData(companion), notes: "" },
         });
-        await tx.reservationGuest.create({ data: { reservationId: current.id, guestId: created.id, isPrimary: false } });
+        await tx.reservationGuest.create({
+          data: { reservationId: current.id, guestId: created.id, isPrimary: false, role: "GUEST" },
+        });
         await auditGuestDocument(tx, current.propertyId, actor.id, created.id, companion.documentType, companion.documentNumber);
         next.push(summaryOf(created.id, companion, false));
       }
@@ -631,7 +646,7 @@ export const reservationService = {
         lastName: parsed.primary.lastName,
         email: parsed.primary.email,
         phone: parsed.primary.phone,
-        country: parsed.primary.country,
+        country: parsed.primary.citizenship,
         documentType: parsed.primary.documentType,
         documentLast4: documentLast4(parsed.primary.documentNumber),
       },
@@ -653,30 +668,11 @@ export const reservationService = {
         nights: true,
         checkIn: true,
         checkOut: true,
-        guest: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            country: true,
-            documentType: true,
-            documentNumber: true,
-          },
-        },
+        guest: { select: checkInGuestSelect },
         guests: {
           select: {
             isPrimary: true,
-            guest: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                country: true,
-                documentType: true,
-                documentNumber: true,
-              },
-            },
+            guest: { select: checkInGuestSelect },
           },
         },
         room: { select: { number: true, status: true } },
@@ -920,6 +916,27 @@ export const reservationService = {
   },
 };
 
+const checkInGuestSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  sex: true,
+  dateOfBirth: true,
+  birthPlace: true,
+  citizenship: true,
+  residenceAddress: true,
+  residencePostalCode: true,
+  residenceCity: true,
+  residenceProvince: true,
+  residenceCountry: true,
+  documentType: true,
+  documentNumber: true,
+  documentAuthority: true,
+  documentIssuedOn: true,
+  documentExpiresOn: true,
+  documentCountry: true,
+} as const;
+
 function toDeskGuest(guest: {
   id: string;
   firstName: string;
@@ -927,8 +944,19 @@ function toDeskGuest(guest: {
   email: string | null;
   phone: string | null;
   country: string | null;
+  citizenship: string | null;
+  sex: string | null;
+  dateOfBirth: Date | null;
+  birthPlace: string | null;
+  residenceAddress: string | null;
+  residencePostalCode: string | null;
+  residenceCity: string | null;
+  residenceProvince: string | null;
+  residenceCountry: string | null;
   documentType: string | null;
   documentNumber: string | null;
+  documentAuthority: string | null;
+  documentIssuedOn: Date | null;
   documentCountry: string | null;
   documentExpiresOn: Date | null;
 }) {
@@ -938,9 +966,19 @@ function toDeskGuest(guest: {
     lastName: guest.lastName,
     email: guest.email,
     phone: guest.phone,
-    country: guest.country,
+    sex: guest.sex,
+    dateOfBirth: guest.dateOfBirth ? toISODate(guest.dateOfBirth) : null,
+    birthPlace: guest.birthPlace,
+    citizenship: guest.citizenship || guest.country,
+    residenceAddress: guest.residenceAddress,
+    residencePostalCode: guest.residencePostalCode,
+    residenceCity: guest.residenceCity,
+    residenceProvince: guest.residenceProvince,
+    residenceCountry: guest.residenceCountry,
     documentType: knownDocumentType(guest.documentType),
     documentNumber: guest.documentNumber,
+    documentAuthority: guest.documentAuthority,
+    documentIssuedOn: guest.documentIssuedOn ? toISODate(guest.documentIssuedOn) : null,
     documentCountry: guest.documentCountry,
     documentExpiresOn: guest.documentExpiresOn ? toISODate(guest.documentExpiresOn) : null,
   };
@@ -949,24 +987,45 @@ function toDeskGuest(guest: {
 function guestDocumentData(guest: {
   firstName: string;
   lastName: string;
-  email?: string | null;
+  sex: string;
+  dateOfBirth: string;
+  birthPlace: string;
+  citizenship: string;
+  email: string | null;
   phone: string | null;
-  country: string;
+  residenceAddress: string;
+  residencePostalCode: string | null;
+  residenceCity: string;
+  residenceProvince: string | null;
+  residenceCountry: string;
   documentType: string;
   documentNumber: string;
-  documentCountry: string | null;
+  documentAuthority: string;
+  documentIssuedOn: string;
+  documentCountry: string;
   documentExpiresOn: string | null;
 }) {
   return {
     firstName: guest.firstName,
     lastName: guest.lastName,
+    sex: guest.sex,
+    dateOfBirth: toDate(guest.dateOfBirth),
+    birthPlace: guest.birthPlace,
+    citizenship: guest.citizenship,
+    country: guest.citizenship,
+    email: guest.email,
     phone: guest.phone,
-    country: guest.country,
+    residenceAddress: guest.residenceAddress,
+    residencePostalCode: guest.residencePostalCode,
+    residenceCity: guest.residenceCity,
+    residenceProvince: guest.residenceProvince,
+    residenceCountry: guest.residenceCountry,
     documentType: guest.documentType,
     documentNumber: guest.documentNumber,
+    documentAuthority: guest.documentAuthority,
+    documentIssuedOn: toDate(guest.documentIssuedOn),
     documentCountry: guest.documentCountry,
     documentExpiresOn: guest.documentExpiresOn ? toDate(guest.documentExpiresOn) : null,
-    ...("email" in guest ? { email: guest.email ?? null } : {}),
   };
 }
 

@@ -119,7 +119,7 @@ export function LifecycleActions({
       total: number;
       checkOut: string;
       nights: number;
-      guest?: { firstName: string; lastName: string; email: string | null; phone: string; country: string };
+      guest?: { firstName: string; lastName: string; email: string | null; phone: string | null; country: string };
       party?: StayGuestSummary[];
     };
   } | { ok: false; error: string }) {
