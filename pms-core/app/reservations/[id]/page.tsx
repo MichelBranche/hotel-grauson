@@ -12,6 +12,7 @@ import { isPayAtPropertyRequest } from "@pms-core/lib/pay-at-property";
 import { optionExpiryLabel } from "@pms-core/lib/option-hold";
 import { roundMoney } from "@pms-core/lib/money";
 import { documentLast4, knownDocumentType, roleLabel, sexLabel, stayParty } from "@pms-core/lib/check-in-guest";
+import { planningColor } from "@pms-core/lib/planning-color";
 import { guestDisplay, parseJson } from "@pms-core/lib/utils";
 import { auditService } from "@pms-core/services/audit.service";
 import { rateService } from "@pms-core/services/rate.service";
@@ -70,7 +71,7 @@ export default async function ReservationDetailPage({ params }: { params: Promis
     notes: reservation.notes,
     payAtProperty: isPayAtPropertyRequest(reservation),
     vip: reservation.vip,
-    color: "#dce8dc",
+    color: planningColor(reservation.status),
   };
   const planningRooms: PlanningRoom[] = rooms.map((room) => ({
     id: room.id,

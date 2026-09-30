@@ -26,7 +26,7 @@ import { DatePicker } from "@pms-core/components/ui/date-picker";
 import { addDaysISO, eachISODate, formatRange, nightsBetween, todayISO } from "@pms-core/lib/dates";
 import type { LiveClientDetail } from "@pms-core/realtime/protocol";
 import { planningBarLabel, planningBarTitle } from "@pms-core/lib/planning-bar-label";
-import { planningColor } from "@pms-core/lib/planning-color";
+import { planningBarTextColor, planningColor, planningLegendItems } from "@pms-core/lib/planning-color";
 import { primaryDeskAction } from "@pms-core/lib/reservation-status";
 import { formatMoneyExact } from "@pms-core/lib/money";
 import { cn } from "@pms-core/lib/utils";
@@ -106,6 +106,7 @@ function Block({
         left,
         width: barWidth,
         background: reservation.color,
+        color: planningBarTextColor(),
         transform: CSS.Translate.toString(transform),
       }}
       title={title}
@@ -339,6 +340,7 @@ export function PlanningBoard({
               total: patch.total,
               checkOut: patch.checkOut,
               nights: patch.nights,
+              color: planningColor(patch.status),
               ...(patch.guestName !== undefined
                 ? {
                     guestName: patch.guestName,
@@ -564,6 +566,15 @@ export function PlanningBoard({
           </div>
         </div>
 
+        <ul className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--pms-muted)]" aria-label="Legenda colori prenotazione">
+          {planningLegendItems().map((item) => (
+            <li key={item.status} className="inline-flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full" style={{ background: item.color }} aria-hidden />
+              {item.label}
+            </li>
+          ))}
+        </ul>
+
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div ref={scroller} className="pms-card max-h-[min(70dvh,44rem)] min-h-[28rem] overflow-auto overscroll-contain pms-scroll">
             <div style={{ minWidth: ROOM_COL + days.length * dayWidth }}>
@@ -744,7 +755,7 @@ export function PlanningBoard({
             ...current,
             reservations: current.reservations.some((item) => item.id === stay.id)
               ? current.reservations
-              : [...current.reservations, { ...stay, color: planningColor(stay.id) }],
+              : [...current.reservations, { ...stay, color: planningColor(stay.status) }],
           }));
         }}
       />
